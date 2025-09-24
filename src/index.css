@@ -1,13 +1,48 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Alap container */
+.container {
+  @apply max-w-4xl mx-auto p-4;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* Cím */
+h1, h2 {
+  @apply font-bold text-gray-800;
+}
+
+/* Űrlap inputok */
+input, textarea, select {
+  @apply border border-gray-300 rounded px-3 py-2 w-full mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400;
+}
+
+/* Gombok */
+button {
+  @apply bg-blue-500 text-white font-semibold px-4 py-2 rounded hover:bg-blue-600 transition;
+}
+
+/* Eseménylista kártyák */
+.event-card {
+  @apply border border-gray-200 rounded shadow p-4 mb-3 hover:bg-gray-50 transition;
+}
+
+/* Üzenetek */
+.message {
+  @apply text-green-600 font-medium mt-2;
+}
+
+/* Hibák */
+.error {
+  @apply text-red-600 font-medium mt-2;
+}
+
+/* Szűrő sor */
+.filter-bar {
+  @apply flex flex-col md:flex-row gap-2 mb-4;
+}
+
+/* Mobil-responsív lista */
+ul {
+  @apply list-none p-0;
 }

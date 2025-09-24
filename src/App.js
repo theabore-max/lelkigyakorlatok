@@ -1,28 +1,59 @@
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
-import AuthForm from "./components/AuthForm";
-import EventList from "./components/EventList";
-import AddEventPage from "./pages/AddEventPage";
+import { useState } from "react";
 import { useAuth } from "./hooks/useAuth";
+import AuthForm from "./components/AuthForm";
+import FilterBar from "./components/FilterBar";
+import EventList from "./components/EventList";
+import NewEventForm from "./components/NewEventForm";
 
-function App() {
-  const user = useAuth();
+export default function App() {
+  const { user } = useAuth();
+
+  // Kereső és szűrő state
+  const [search, setSearch] = useState("");
+  const [targetGroup, setTargetGroup] = useState("");
+  const [location, setLocation] = useState("");
+
+  // Előredefiniált opciók
+  const targetGroups = ["Fiatalok", "Felnőttek", "Családok"];
+  const locations = ["Budapest", "Szeged", "Debrecen"];
 
   return (
-    <Router>
-      <div style={{ padding: "20px" }}>
-        <h1>Lelkigyakorlat kereső</h1>
-        <nav>
-          <Link to="/">Események</Link> |{" "}
-          {user && <Link to="/add-event">Új esemény</Link>}
-        </nav>
-        <AuthForm />
-        <Routes>
-          <Route path="/" element={<EventList />} />
-          <Route path="/add-event" element={<AddEventPage />} />
-        </Routes>
+    <div className="container mx-auto p-4">
+      <h1 className="text-3xl font-bold mb-4">Lelkigyakorlatok</h1>
+
+      {/* Belépési blokk */}
+      {!user && (
+        <div className="mb-6">
+          <AuthForm />
+        </div>
+      )}
+
+      {/* Szűrős kereső */}
+      <div className="mb-4">
+        <FilterBar
+          search={search} setSearch={setSearch}
+          targetGroup={targetGroup} setTargetGroup={setTargetGroup}
+          location={location} setLocation={setLocation}
+          targetGroups={targetGroups}
+          locations={locations}
+        />
       </div>
-    </Router>
+
+      {/* Eseménylista */}
+      <div className="mb-6">
+        <EventList
+          search={search}
+          targetGroup={targetGroup}
+          location={location}
+        />
+      </div>
+
+      {/* Új esemény létrehozása belépett user-nek */}
+      {user && (
+        <div className="mb-6">
+          <NewEventForm />
+        </div>
+      )}
+    </div>
   );
 }
-
-export default App;
