@@ -2,10 +2,10 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import AuthForm from "./components/AuthForm";
 import EventList from "./components/EventList";
 import AddEventPage from "./pages/AddEventPage";
-import { useauth } from "./hooks/useauth";
+//import { useauth } from "./hooks/useauth";
 
 function App() {
-  const user = useauth();
+  //const user = useauth();
 
   return (
     <Router>
