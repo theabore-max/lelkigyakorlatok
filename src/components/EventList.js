@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 
-export default function EventsList() {
+export default function EventsList() { 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
