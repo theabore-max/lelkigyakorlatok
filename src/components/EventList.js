@@ -12,8 +12,9 @@ export default function EventList() {
         .order("start_date", { ascending: true });
 
       if (error) {
-        console.error(error);
+        console.error("Supabase error:", error);
       } else {
+        console.log("Fetched events:", data); // 🔍 DEBUG
         setEvents(data);
       }
     }
