@@ -1,9 +1,9 @@
 import { useState } from "react";
-import useAuth from "../hooks/useAuth";
+import { useauth} from "../hooks/useauth";
 import { supabase } from "../supabaseClient";
 
 export default function AddEventPage() {
-  const user = useAuth();
+  const user = useauth();
 
   const [formData, setFormData] = useState({
     title: "",
