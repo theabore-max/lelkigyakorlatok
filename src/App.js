@@ -1,3 +1,4 @@
+import './index.css';
 import { useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import AuthForm from "./components/AuthForm";
