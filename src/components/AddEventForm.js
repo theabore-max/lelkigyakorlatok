@@ -1,148 +1,118 @@
 // src/components/AddEventForm.js
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 
-export default function AddEventForm({ setPage, user }) {
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    start_date: "",
-    end_date: "",
-    location: "",
-    target_group: "",
-    organizer: "",
-    contact: "",
-    registration_link: ""
-  });
+export default function AddEventForm({ user }) {
+  const [title, setTitle] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [location, setLocation] = useState("");
+  const [description, setDescription] = useState("");
+  const [targetGroup, setTargetGroup] = useState("Mindenki");
+  const [contact, setContact] = useState("");
+  const [organizer, setOrganizer] = useState("");
+  const [registrationLink, setRegistrationLink] = useState("");
+  const [organizerOptions, setOrganizerOptions] = useState([]);
   const [message, setMessage] = useState("");
 
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  useEffect(() => {
+    const fetchOrganizers = async () => {
+      const { data } = await supabase.from("events").select("organizer");
+      const uniqueOrganizers = [...new Set(data.map(e => e.organizer).filter(Boolean))];
+      setOrganizerOptions(uniqueOrganizers);
+    };
+    fetchOrganizers();
+  }, []);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
-    setMessage("");
-    if (!form.title || !form.start_date) {
-      setMessage("Kérlek töltsd ki a kötelező mezőket (név, kezdés).");
+    if (!title || !startDate) {
+      setMessage("A cím és a kezdés dátuma kötelező!");
       return;
     }
 
-    try {
-      const { error } = await supabase.from("events").insert([
-        {
-          ...form,
-          created_by: user?.id ?? null,
-        },
-      ]);
+    const { error } = await supabase.from("events").insert([
+      {
+        title,
+        start_date: startDate,
+        end_date: endDate || null,
+        location,
+        description,
+        target_group: targetGroup,
+        contact,
+        organizer,
+        registration_link: registrationLink,
+        user_id: user.id
+      }
+    ]);
 
-      if (error) throw error;
-      setMessage("Esemény sikeresen létrehozva.");
-      setTimeout(() => setPage("home"), 900);
-    } catch (err) {
-      setMessage("Hiba: " + err.message);
+    if (error) {
+      setMessage("Hiba az esemény hozzáadásakor: " + error.message);
+    } else {
+      setMessage("Sikeresen hozzáadva!");
+      // opcionálisan törölhetjük a mezőket
+      setTitle(""); setStartDate(""); setEndDate(""); setLocation("");
+      setDescription(""); setTargetGroup("Mindenki"); setContact("");
+      setOrganizer(""); setRegistrationLink("");
     }
   };
 
   return (
     <div className="container mt-4">
-      <button
-        className="btn btn-secondary mb-3"
-        onClick={() => setPage("home")}
-      >
-        Vissza
-      </button>
-      <h2>Új lelkigyakorlat hozzáadása</h2>
+      <h3>Új lelkigyakorlat hozzáadása</h3>
+      {message && <p>{message}</p>}
       <form onSubmit={handleSubmit}>
-        <div className="mb-2">
-          <input
-            name="title"
-            className="form-control"
-            placeholder="Megnevezés *"
-            value={form.title}
-            onChange={handleChange}
-            required
-          />
+        <div className="mb-3">
+          <label className="form-label">Megnevezés</label>
+          <input type="text" className="form-control" value={title} onChange={e => setTitle(e.target.value)} />
         </div>
-        <div className="mb-2">
-          <textarea
-            name="description"
-            className="form-control"
-            placeholder="Leírás"
-            value={form.description}
-            onChange={handleChange}
-          />
+        <div className="mb-3">
+          <label className="form-label">Kezdés dátuma</label>
+          <input type="date" className="form-control" value={startDate} onChange={e => setStartDate(e.target.value)} />
         </div>
-        <div className="row">
-          <div className="col mb-2">
-            <input
-              name="start_date"
-              className="form-control"
-              type="date"
-              value={form.start_date}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="col mb-2">
-            <input
-              name="end_date"
-              className="form-control"
-              type="date"
-              value={form.end_date}
-              onChange={handleChange}
-            />
-          </div>
+        <div className="mb-3">
+          <label className="form-label">Befejezés dátuma</label>
+          <input type="date" className="form-control" value={endDate} onChange={e => setEndDate(e.target.value)} />
         </div>
-        <div className="mb-2">
-          <input
-            name="location"
-            className="form-control"
-            placeholder="Helyszín"
-            value={form.location}
-            onChange={handleChange}
-          />
+        <div className="mb-3">
+          <label className="form-label">Helyszín</label>
+          <input type="text" className="form-control" value={location} onChange={e => setLocation(e.target.value)} />
         </div>
-        <div className="mb-2">
-          <input
-            name="target_group"
-            className="form-control"
-            placeholder="Célcsoport"
-            value={form.target_group}
-            onChange={handleChange}
-          />
+        <div className="mb-3">
+          <label className="form-label">Leírás</label>
+          <textarea className="form-control" value={description} onChange={e => setDescription(e.target.value)} />
         </div>
-        <div className="mb-2">
-          <input
-            name="organizer"
-            className="form-control"
-            placeholder="Szervező közösség"
-            value={form.organizer}
-            onChange={handleChange}
-          />
+        <div className="mb-3">
+          <label className="form-label">Célcsoport</label>
+          <select className="form-select" value={targetGroup} onChange={e => setTargetGroup(e.target.value)}>
+            <option>Mindenki</option>
+            <option>Fiatalok</option>
+            <option>Idősek</option>
+            <option>Fiatal házasok</option>
+            <option>Érett házasok</option>
+            <option>Jegyesek</option>
+            <option>Tinédzserek</option>
+            <option>Családok</option>
+          </select>
         </div>
-        <div className="mb-2">
-          <input
-            name="contact"
-            className="form-control"
-            placeholder="Kapcsolattartó"
-            value={form.contact}
-            onChange={handleChange}
-          />
+        <div className="mb-3">
+          <label className="form-label">Kapcsolattartó</label>
+          <input type="text" className="form-control" value={contact} onChange={e => setContact(e.target.value)} />
         </div>
-        <div className="mb-2">
-          <input
-            name="registration_link"
-            className="form-control"
-            placeholder="Jelentkezési link"
-            value={form.registration_link}
-            onChange={handleChange}
-          />
+        <div className="mb-3">
+          <label className="form-label">Szervező közösség</label>
+          <input list="organizers" className="form-control" value={organizer} onChange={e => setOrganizer(e.target.value)} />
+          <datalist id="organizers">
+            {organizerOptions.map((o, idx) => <option key={idx} value={o} />)}
+          </datalist>
         </div>
-        <button className="btn btn-success" type="submit">
-          Mentés
-        </button>
+        <div className="mb-3">
+          <label className="form-label">Jelentkezési link</label>
+          <input type="url" className="form-control" value={registrationLink} onChange={e => setRegistrationLink(e.target.value)} />
+        </div>
+        <button type="submit" className="btn btn-primary">Hozzáadás</button>
       </form>
-      {message && <div className="alert alert-info mt-2">{message}</div>}
     </div>
   );
 }
+
