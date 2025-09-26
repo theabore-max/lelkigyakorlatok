@@ -1,18 +1,40 @@
 // src/components/EventList.js
-import React, { useEffect, useState, useCallback } from "react";
-import { Card, Button, Row, Col, Form, Modal, InputGroup, FormControl } from "react-bootstrap";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
-import headerImage from "../assets/header.jpg"; // placeholder kép
-import cardImage from "../assets/card_1.jpg"; // placeholder kép
+import headerImage from "../assets/header.jpg";
+import placeholderImage from "../assets/card_1.jpg";
 
-export default function EventList() {
+export default function EventList({ user }) {
   const [events, setEvents] = useState([]);
-  const [filteredEvents, setFilteredEvents] = useState([]);
-  const [selectedFilter, setSelectedFilter] = useState("Mindenki");
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [searchText, setSearchText] = useState("");
+  const [filter, setFilter] = useState("Mindenki");
+  const [page, setPage] = useState(0);
+  const pageSize = 9;
 
-  const filters = [
+  const fetchEvents = async () => {
+    let query = supabase
+      .from("events")
+      .select("*, community:community_id(name)")
+      .gte("start_date", new Date().toISOString())
+      .order("start_date", { ascending: true });
+
+    if (filter !== "Mindenki") {
+      query = query.eq("target_group", filter);
+    }
+
+    const { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
+    if (error) console.error("Hiba az események lekérésekor:", error);
+    else {
+      setEvents(data);
+      setSelectedEvent(null); // új filter esetén eltünteti a részleteket
+    }
+  };
+
+  useEffect(() => {
+    fetchEvents();
+  }, [filter, page]);
+
+  const targetGroups = [
     "Mindenki",
     "Fiatalok",
     "Idősek",
@@ -20,184 +42,92 @@ export default function EventList() {
     "Érett házasok",
     "Jegyesek",
     "Tinédzserek",
-    "Családok",
+    "Családok"
   ];
 
-  // Lekérjük a jövőbeli eseményeket
-  const fetchEvents = async () => {
-    const today = new Date().toISOString().split("T")[0];
-    let { data, error } = await supabase
-      .from("events")
-      .select("*")
-      .gte("start_date", today)
-      .order("start_date", { ascending: true });
-
-    if (error) console.error(error);
-    else setEvents(data);
-  };
-
-  // Szűrési logika useCallback-kel, hogy a linter ne jelezzen
-  const applyFilter = useCallback(() => {
-    let filtered = events;
-
-    if (selectedFilter !== "Mindenki") {
-      filtered = filtered.filter((event) => event.target_group === selectedFilter);
-    }
-
-    if (searchText.trim() !== "") {
-      const lowerSearch = searchText.toLowerCase();
-      filtered = filtered.filter(
-  (event) =>
-    (event.title?.toLowerCase() || "").includes(lowerSearch) ||
-    (event.community?.toLowerCase() || "").includes(lowerSearch) ||
-    (event.location?.toLowerCase() || "").includes(lowerSearch)
-);
-    }
-
-    setFilteredEvents(filtered);
-    setSelectedEvent(null); // új filter vagy keresés esetén a részletek eltűnnek
-  }, [events, selectedFilter, searchText]);
-
-  // Fetch és szűrés useEffect-ek
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  useEffect(() => {
-    applyFilter();
-  }, [applyFilter]);
-
   return (
-    <>
-      {/* Header kép és főcím legfelül */}
-      <div
-        style={{
-          backgroundImage: `url(${headerImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          height: "300px",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-start", // legfelülre
-          alignItems: "center",
-          color: "black",
-          textAlign: "center",
-          paddingTop: "20px",
-          paddingBottom: "10px",
-        }}
-      >
-        <h1 style={{ fontWeight: "bold" }}>Katolikus Lelkigyakorlat-kereső</h1>
-        <p style={{ marginTop: "10px" }}>Találd meg azt a lelkigyakorlatot, ami neked szól!</p>
+    <div className="container mt-4">
+      {/* Header */}
+      <div className="text-center mb-4">
+        <img src={headerImage} alt="Katolikus lelkigyakorlat" className="img-fluid rounded" />
+        <h1 className="mt-3">Katolikus Lelkigyakorlat-kereső</h1>
+        <h4>Találd meg azt a lelkigyakorlatot, ami neked szól!</h4>
       </div>
 
-      <Row className="mt-4">
-        {/* Bal oldali filter és kereső */}
-        <Col md={3} className="mb-4">
-          <h5>Célcsoport:</h5>
-          <Form>
-            {filters.map((filter) => (
-              <Form.Check
-                key={filter}
-                type="radio"
-                label={filter}
-                name="targetGroup"
-                checked={selectedFilter === filter}
-                onChange={() => setSelectedFilter(filter)}
-                className="mb-2"
-              />
+      <div className="row">
+        {/* Bal oldali filterek */}
+        <div className="col-md-3 mb-3">
+          <strong>Célcsoport:</strong>
+          <div className="d-flex flex-column mt-2">
+            {targetGroups.map((group) => (
+              <button
+                key={group}
+                className={`btn btn-outline-primary mb-2 ${filter === group ? "active" : ""}`}
+                onClick={() => { setFilter(group); setPage(0); }}
+              >
+                {group}
+              </button>
             ))}
-          </Form>
+          </div>
+        </div>
 
-          <h5>Keresés:</h5>
-          <InputGroup className="mb-3">
-            <FormControl
-              placeholder="Szabadszavas keresés..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-            />
-          </InputGroup>
-        </Col>
-
-        {/* Jobb oldali kártyák */}
-        <Col md={9}>
-          {filteredEvents.length === 0 ? (
-            <p className="text-center fs-5 mt-5">
-              Nincs elérhető esemény ehhez a célcsoporthoz vagy kereséshez.
-            </p>
-          ) : (
-            <Row>
-              {filteredEvents.map((event) => (
-                <Col md={6} lg={4} key={event.id} className="mb-4">
-                  <Card
-                    className="shadow-sm card-hover"
-                    style={{ borderRadius: "12px", overflow: "hidden" }}
-                  >
-                    <Card.Img variant="top" src={cardImage} alt={event.title} />
-                    <Card.Body style={{ backgroundColor: "white" }}>
-                      <Card.Title className="fw-bold">{event.title}</Card.Title>
-                      <Card.Text>
-                        <strong>Közösség:</strong> {event.community} <br />
-                        <strong>Kezdés:</strong> {event.start_date}
-                      </Card.Text>
-                      <Button
-                        variant="primary"
-                        className="text-white"
-                        onClick={() => setSelectedEvent(event)}
-                      >
-                        Részletek
-                      </Button>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))}
-            </Row>
-          )}
-        </Col>
-
-        {/* Modal a részletekhez */}
-        {selectedEvent && (
-          <Modal show={true} onHide={() => setSelectedEvent(null)}>
-            <Modal.Header closeButton>
-              <Modal.Title>{selectedEvent.title}</Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-              <p>
-                <strong>Leírás:</strong> {selectedEvent.description}
-              </p>
-              <p>
-                <strong>Célcsoport:</strong> {selectedEvent.target_group}
-              </p>
-              <p>
-                <strong>Kezdés:</strong> {selectedEvent.start_date}
-              </p>
-              <p>
-                <strong>Befejezés:</strong> {selectedEvent.end_date}
-              </p>
-              <p>
-                <strong>Kapcsolattartó:</strong> {selectedEvent.contact}
-              </p>
-              <p>
-                <strong>Szervező közösség:</strong> {selectedEvent.community}
-              </p>
-              <p>
-                <strong>Jelentkezés link:</strong>{" "}
-                <a
-                  href={selectedEvent.registration_link}
-                  target="_blank"
-                  rel="noreferrer"
+        {/* Jobb oldali események */}
+        <div className="col-md-9">
+          <div className="row">
+            {events.length === 0 && (
+              <p className="mt-3">Nincs elérhető esemény a kiválasztott feltételhez.</p>
+            )}
+            {events.map((event) => (
+              <div className="col-md-6 mb-4" key={event.id}>
+                <div
+                  className="card h-100 shadow-sm"
+                  style={{ cursor: "pointer" }}
+                  onClick={() =>
+                    setSelectedEvent(selectedEvent?.id === event.id ? null : event)
+                  }
                 >
-                  {selectedEvent.registration_link}
-                </a>
-              </p>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="secondary" onClick={() => setSelectedEvent(null)}>
-                Bezárás
-              </Button>
-            </Modal.Footer>
-          </Modal>
-        )}
-      </Row>
-    </>
+                  <img
+                    src={placeholderImage}
+                    className="card-img-top"
+                    alt="Esemény"
+                    style={{ height: "20px", objectFit: "cover" }}
+                  />
+                  <div className="card-body">
+                    <h5 className="card-title">{event.title}</h5>
+                    <p className="card-text"><strong>Cím:</strong> {event.location}</p>
+                    <p className="card-text"><strong>Szervező:</strong> {event.community?.name}</p>
+                    <p className="card-text"><strong>Kezdés:</strong> {new Date(event.start_date).toLocaleString()}</p>
+
+                    {selectedEvent?.id === event.id && (
+                      <div className="mt-2">
+                        <button className="btn btn-secondary mb-2" onClick={() => setSelectedEvent(null)}>
+                          &larr; Vissza
+                        </button>
+                        <p><strong>Befejezés:</strong> {new Date(event.end_date).toLocaleString()}</p>
+                        <p><strong>Leírás:</strong> {event.description}</p>
+                        <p><strong>Célcsoport:</strong> {event.target_group}</p>
+                        <p><strong>Kapcsolattartó:</strong> {event.contact}</p>
+                        <p>
+                          <strong>Jelentkezés link:</strong>{" "}
+                          <a href={event.registration_link} target="_blank" rel="noreferrer">{event.registration_link}</a>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Lapozás */}
+          {events.length === pageSize && (
+            <button className="btn btn-primary mt-3" onClick={() => setPage(page + 1)}>
+              Tovább
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
+
