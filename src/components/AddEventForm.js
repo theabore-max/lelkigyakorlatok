@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import addEventImage from "../assets/addevent.jpg";
-import "./AddEventForm.css"; // Ide kerüljön a CSS animáció
+import "./AddEventForm.css"; // CSS a javaslatlistához és animációkhoz
 
 export default function AddEventForm({ user, onBack }) {
   const [title, setTitle] = useState("");
@@ -15,9 +15,10 @@ export default function AddEventForm({ user, onBack }) {
   const [communitySuggestions, setCommunitySuggestions] = useState([]);
   const [communities, setCommunities] = useState([]);
   const [registrationLink, setRegistrationLink] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false); // Új állapot
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapperRef = useRef(null);
 
+  // Közösségek lekérése
   useEffect(() => {
     const fetchCommunities = async () => {
       const { data, error } = await supabase.from("communities").select("*");
@@ -26,6 +27,7 @@ export default function AddEventForm({ user, onBack }) {
     fetchCommunities();
   }, []);
 
+  // Kattintás kívülről bezárja a javaslatlistát
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -36,6 +38,7 @@ export default function AddEventForm({ user, onBack }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Közösség input változása
   const handleCommunityChange = (e) => {
     const value = e.target.value;
     setCommunity(value);
@@ -47,21 +50,20 @@ export default function AddEventForm({ user, onBack }) {
     }
 
     const suggestions = communities
-      .filter((c) =>
-        c.name.toLowerCase().includes(value.toLowerCase())
-      )
+      .filter((c) => c.name.toLowerCase().includes(value.toLowerCase()))
       .map((c) => c.name);
     setCommunitySuggestions(suggestions);
-    setShowSuggestions(true); // Animáció indítása
+    setShowSuggestions(true);
   };
 
   const handleCommunitySelect = (name) => {
     setCommunity(name);
-    setShowSuggestions(false); // Animáció a listára
+    setShowSuggestions(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!title || !targetGroup || !startDate || !contact || !registrationLink) {
       alert("Kérlek töltsd ki a kötelező mezőket!");
       return;
@@ -110,8 +112,44 @@ export default function AddEventForm({ user, onBack }) {
       </button>
       <h2>Lelkigyakorlat hozzáadása</h2>
       <form onSubmit={handleSubmit} className="row g-3 mt-2">
+        {/* Kép bal oldalon */}
+        <div className="col-md-6 d-flex align-items-center justify-content-center">
+          <img src={addEventImage} alt="Lelkigyakorlat" className="img-fluid rounded" />
+        </div>
+
+        {/* Mezők jobbra */}
         <div className="col-md-6">
-          {/* ... többi mező ugyanaz ... */}
+          <div className="mb-3">
+            <label className="form-label">Megnevezés *</label>
+            <input type="text" className="form-control" value={title} onChange={e => setTitle(e.target.value)} />
+            <small className="form-text text-muted fst-italic">Pl. Fiatalok lelkigyakorlata</small>
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Leírás</label>
+            <textarea className="form-control" value={description} onChange={e => setDescription(e.target.value)} />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Célcsoport *</label>
+            <input type="text" className="form-control" value={targetGroup} onChange={e => setTargetGroup(e.target.value)} />
+            <small className="form-text text-muted fst-italic">Pl. Fiatalok, Mindenki, Idősek</small>
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Kezdés *</label>
+            <input type="date" className="form-control" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Befejezés</label>
+            <input type="date" className="form-control" value={endDate} onChange={e => setEndDate(e.target.value)} />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Kapcsolattartó *</label>
+            <input type="text" className="form-control" value={contact} onChange={e => setContact(e.target.value)} />
+          </div>
 
           <div className="mb-3 position-relative" ref={wrapperRef}>
             <label className="form-label">Szervező közösség</label>
@@ -122,32 +160,23 @@ export default function AddEventForm({ user, onBack }) {
               value={community}
               onChange={handleCommunityChange}
             />
-            <ul
-              className={`list-group position-absolute w-100 shadow-sm suggestions ${
-                showSuggestions ? "show" : ""
-              }`}
-            >
+            <ul className={`list-group position-absolute w-100 shadow-sm suggestions ${showSuggestions ? "show" : ""}`}>
               {communitySuggestions.map((name) => (
-                <li
-                  key={name}
-                  className="list-group-item list-group-item-action"
-                  onClick={() => handleCommunitySelect(name)}
-                >
+                <li key={name} className="list-group-item list-group-item-action" onClick={() => handleCommunitySelect(name)}>
                   {name}
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* ... többi mező, submit gomb ... */}
-        </div>
+          <div className="mb-3">
+            <label className="form-label">Jelentkezési link *</label>
+            <input type="url" className="form-control" value={registrationLink} onChange={e => setRegistrationLink(e.target.value)} />
+            <small className="form-text text-muted fst-italic">Weboldal címe vagy e-mail cím</small>
+          </div>
 
-        <div className="col-md-6 d-flex align-items-center justify-content-center">
-          <img
-            src={addEventImage}
-            alt="Lelkigyakorlat"
-            className="img-fluid rounded"
-          />
+          <button type="submit" className="btn btn-primary">Hozzáadás</button>
+          <p className="mt-2"><small className="text-muted">A *-al jelölt mezők kötelezőek</small></p>
         </div>
       </form>
     </div>
