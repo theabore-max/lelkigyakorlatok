@@ -11,32 +11,41 @@ export default function PageContent() {
 
   return (
     <div>
-      {/* Menüsor szürke háttérrel */}
-      <div className="bg-light border-bottom py-2">
-        <div className="d-flex justify-content-center gap-3">
-          <button className="btn btn-link text-dark fw-bold" onClick={() => setCurrentPage("home")}>
-            Főoldal
-          </button>
-          <button className="btn btn-link text-dark fw-bold" onClick={() => setCurrentPage("about")}>
-            Az oldal célja
-          </button>
-          <button className="btn btn-link text-dark fw-bold" onClick={() => setCurrentPage("contact")}>
-            Kapcsolat
-          </button>
-          {!user && (
-            <button className="btn btn-outline-primary" onClick={() => setCurrentPage("auth")}>
-              Belépés
+      {/* Navigation bar */}
+      <nav className="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+        <div className="container d-flex justify-content-between">
+          <span
+            className="navbar-brand fw-bold"
+            style={{ cursor: "pointer" }}
+            onClick={() => setCurrentPage("home")}
+          >
+            Katolikus Lelkigyakorlat-kereső
+          </span>
+          <div>
+            <button className="btn btn-link text-dark" onClick={() => setCurrentPage("home")}>
+              Főoldal
             </button>
-          )}
-          {user && (
-            <button className="btn btn-success" onClick={() => setCurrentPage("addEvent")}>
-              Lelkigyakorlat hozzáadása
+            <button className="btn btn-link text-dark" onClick={() => setCurrentPage("about")}>
+              Az oldal célja
             </button>
-          )}
+            <button className="btn btn-link text-dark" onClick={() => setCurrentPage("contact")}>
+              Kapcsolat
+            </button>
+            {!user && (
+              <button className="btn btn-outline-primary ms-2" onClick={() => setCurrentPage("auth")}>
+                Belépés
+              </button>
+            )}
+            {user && (
+              <button className="btn btn-success ms-2" onClick={() => setCurrentPage("addEvent")}>
+                Lelkigyakorlat hozzáadása
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Oldalak renderelése */}
+      {/* Oldalak */}
       <div className="container mt-4">
         {currentPage === "home" && <EventList user={user} />}
         {currentPage === "about" && <AboutPage onBack={() => setCurrentPage("home")} />}
@@ -62,5 +71,6 @@ export default function PageContent() {
     </div>
   );
 }
+
 
 
