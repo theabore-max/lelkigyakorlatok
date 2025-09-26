@@ -4,6 +4,7 @@ import EventList from "./EventList";
 import AboutPage from "./AboutPage";
 import ContactPage from "./ContactPage";
 import AuthPage from "./AuthPage";
+import AddEventForm from "./AddEventForm";
 
 export default function PageContent() {
   const [currentPage, setCurrentPage] = useState("home");
@@ -61,7 +62,9 @@ export default function PageContent() {
         {currentPage === "addEvent" && (
           <div>
             <h2>Lelkigyakorlat hozzáadása</h2>
-            <p>(itt jöhet majd az AddEventForm komponens)</p>
+            {currentPage === "addEvent" && (
+				<AddEventForm onBack={() => setCurrentPage("home")} />
+			)}
             <button className="btn btn-secondary" onClick={() => setCurrentPage("home")}>
               Vissza
             </button>
