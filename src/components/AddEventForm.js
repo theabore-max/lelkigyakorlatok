@@ -1,6 +1,6 @@
 // src/components/AddEventForm.js
 import React, { useState, useEffect } from "react";
-import supabase from "../supabaseClient";
+import { supabase } from "../supabaseClient"; 
 import placeholderImg from "../assets/addevent.jpg";
 
 export default function AddEventForm({ onBack, user }) {
