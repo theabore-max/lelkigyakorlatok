@@ -56,8 +56,8 @@ export default function EventList({ user }) {
       {/* Figyelmeztetés csak nem belépett usernek */}
       {!user && (
         <div className="alert alert-info text-center">
-          A lelkigyakorlat létrehozásához be kell lépned. 
-          Csak a saját eseményeidet tudod törölni vagy módosítani.
+          Lelkigyakorlatok létrehozásához be kell lépned, ezután tudod a saját eseményeidet törölni vagy módosítani.
+		  A lelkigyakorlatok böngészése belépés nélkül is működik. Jó böngészést!
         </div>
       )}
 
@@ -82,36 +82,40 @@ export default function EventList({ user }) {
         <div className="col-md-9">
           {paginatedEvents.length === 0 && <p>Nincs elérhető esemény ehhez a célcsoporthoz.</p>}
 
-          {paginatedEvents.map((event) => (
-            <div key={event.id} className="card mb-3" onClick={() => setSelectedEvent(event)}>
-              {/* Placeholder kép a kártyán */}
-              <img
-                src={placeholderImage}
-                className="card-img-top"
-                alt="Esemény"
-				 style={{ height: "20px", objectFit: "cover" }}
-              />
-              <div className="card-body">
-                <h5 className="card-title">{event.title}</h5>
-                <p className="card-text">{event.location} – {new Date(event.start_date).toLocaleString()}</p>
-                {selectedEvent && selectedEvent.id === event.id && (
-                  <div className="mt-2">
-                    <p><strong>Leírás:</strong> {event.description}</p>
-                    <p><strong>Célcsoport:</strong> {event.target_group}</p>
-                    <p><strong>Kezdés:</strong> {new Date(event.start_date).toLocaleString()}</p>
-                    <p><strong>Befejezés:</strong> {new Date(event.end_date).toLocaleString()}</p>
-                    <p><strong>Kapcsolattartó:</strong> {event.contact}</p>
-                    <p><strong>Szervező közösség:</strong> {event.community}</p>
-                    <p><strong>Jelentkezés link:</strong> <a href={event.registration_link}>{event.registration_link}</a></p>
+          <div className="row">
+            {paginatedEvents.map((event) => (
+              <div key={event.id} className="col-md-4 mb-3">
+                <div className="card h-100" onClick={() => setSelectedEvent(event)}>
+                  {/* Placeholder kép a kártya tetején, fix magasság */}
+                  <img
+                    src={placeholderImage}
+                    className="card-img-top"
+                    alt="Esemény"
+                    style={{ height: "20px", objectFit: "cover" }}
+                  />
+                  <div className="card-body">
+                    <h5 className="card-title">{event.title}</h5>
+                    <p className="card-text">{event.location} – {new Date(event.start_date).toLocaleString()}</p>
+                    {selectedEvent && selectedEvent.id === event.id && (
+                      <div className="mt-2">
+                        <p><strong>Leírás:</strong> {event.description}</p>
+                        <p><strong>Célcsoport:</strong> {event.target_group}</p>
+                        <p><strong>Kezdés:</strong> {new Date(event.start_date).toLocaleString()}</p>
+                        <p><strong>Befejezés:</strong> {new Date(event.end_date).toLocaleString()}</p>
+                        <p><strong>Kapcsolattartó:</strong> {event.contact}</p>
+                        <p><strong>Szervező közösség:</strong> {event.community}</p>
+                        <p><strong>Jelentkezés link:</strong> <a href={event.registration_link}>{event.registration_link}</a></p>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
 
           {/* Tovább gomb */}
           {filteredEvents.length > pageSize * (page + 1) && (
-            <button className="btn btn-primary" onClick={() => setPage(page + 1)}>Tovább</button>
+            <button className="btn btn-primary mt-3" onClick={() => setPage(page + 1)}>Tovább</button>
           )}
         </div>
       </div>
