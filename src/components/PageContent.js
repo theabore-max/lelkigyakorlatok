@@ -12,23 +12,23 @@ export default function PageContent() {
   return (
     <div>
       {/* Navigációs sáv */}
-      <nav className="navbar navbar-expand-lg navbar-light bg-light">
-        <a className="navbar-brand" href="#" onClick={() => setCurrentPage("home")}>
-          Katolikus Lelkigyakorlat-kereső
-        </a>
-        <div className="ml-auto">
-          <button className="btn btn-link" onClick={() => setCurrentPage("about")}>Az oldal célja</button>
-          <button className="btn btn-link" onClick={() => setCurrentPage("contact")}>Kapcsolat</button>
-          {!user && (
-            <button className="btn btn-primary" onClick={() => setCurrentPage("auth")}>Belépés</button>
-          )}
-          {user && (
-            <button className="btn btn-success" onClick={() => setCurrentPage("addEvent")}>
-              Lelkigyakorlat hozzáadása
-            </button>
-          )}
-        </div>
-      </nav>
+     // <nav className="navbar navbar-expand-lg navbar-light bg-light">
+     //   <a className="navbar-brand" href="#" onClick={() => setCurrentPage("home")}>
+     //     Katolikus Lelkigyakorlat-kereső
+     //   </a>
+     //   <div className="ml-auto">
+     //     <button className="btn btn-link" onClick={() => setCurrentPage("about")}>Az oldal célja</button>
+     //     <button className="btn btn-link" onClick={() => setCurrentPage("contact")}>Kapcsolat</button>
+     //     {!user && (
+     //       <button className="btn btn-primary" onClick={() => setCurrentPage("auth")}>Belépés</button>
+     //     )}
+     //     {user && (
+     //       <button className="btn btn-success" onClick={() => setCurrentPage("addEvent")}>
+     //         Lelkigyakorlat hozzáadása
+     //       </button>
+     //     )}
+     //   </div>
+     // </nav>
 
       {/* Oldalak */}
       {currentPage === "home" && <EventList user={user} />}
