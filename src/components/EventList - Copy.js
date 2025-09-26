@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import headerImage from "../assets/header.jpg";
+import placeholderImage from "../assets/card_1.jpg"; // placeholder kép
 
 export default function EventList({ user }) {
   const [events, setEvents] = useState([]);
@@ -37,7 +38,6 @@ export default function EventList({ user }) {
   }
 
   const filteredEvents = events.filter((event) => {
-    // Filter célcsoportra
     if (filter !== "Mindenki" && event.target_group !== filter) return false;
     return true;
   });
@@ -56,8 +56,8 @@ export default function EventList({ user }) {
       {/* Figyelmeztetés csak nem belépett usernek */}
       {!user && (
         <div className="alert alert-info text-center">
-          Lelkigyakorlat létrehozásához be kell lépned, majd belépés után tudod a saját eseményeidet törölni vagy módosítani.
-		  A lelkigyakorlatok böngészése belépés nélkül is működik.
+          A lelkigyakorlat létrehozásához be kell lépned. 
+          Csak a saját eseményeidet tudod törölni vagy módosítani.
         </div>
       )}
 
@@ -84,6 +84,12 @@ export default function EventList({ user }) {
 
           {paginatedEvents.map((event) => (
             <div key={event.id} className="card mb-3" onClick={() => setSelectedEvent(event)}>
+              {/* Placeholder kép a kártyán */}
+              <img
+                src={placeholderImage}
+                className="card-img-top"
+                alt="Esemény"
+              />
               <div className="card-body">
                 <h5 className="card-title">{event.title}</h5>
                 <p className="card-text">{event.location} – {new Date(event.start_date).toLocaleString()}</p>
@@ -91,6 +97,7 @@ export default function EventList({ user }) {
                   <div className="mt-2">
                     <p><strong>Leírás:</strong> {event.description}</p>
                     <p><strong>Célcsoport:</strong> {event.target_group}</p>
+                    <p><strong>Kezdés:</strong> {new Date(event.start_date).toLocaleString()}</p>
                     <p><strong>Befejezés:</strong> {new Date(event.end_date).toLocaleString()}</p>
                     <p><strong>Kapcsolattartó:</strong> {event.contact}</p>
                     <p><strong>Szervező közösség:</strong> {event.community}</p>
