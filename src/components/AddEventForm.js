@@ -1,116 +1,215 @@
 // src/components/AddEventForm.js
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { supabase } from "../supabaseClient";
 
-export default function AddEventForm({ user }) {
-  const [title, setTitle] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+export default function AddEventForm({ onBack }) {
+  const [name, setName] = useState("");
   const [location, setLocation] = useState("");
-  const [description, setDescription] = useState("");
-  const [targetGroup, setTargetGroup] = useState("Mindenki");
-  const [contact, setContact] = useState("");
   const [organizer, setOrganizer] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [audience, setAudience] = useState("");
+  const [description, setDescription] = useState("");
   const [registrationLink, setRegistrationLink] = useState("");
-  const [organizerOptions, setOrganizerOptions] = useState([]);
-  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState(null);
+  const [communitySuggestions, setCommunitySuggestions] = useState([]);
 
-  useEffect(() => {
-    const fetchOrganizers = async () => {
-      const { data } = await supabase.from("events").select("organizer");
-      const uniqueOrganizers = [...new Set(data.map(e => e.organizer).filter(Boolean))];
-      setOrganizerOptions(uniqueOrganizers);
-    };
-    fetchOrganizers();
-  }, []);
-
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title || !startDate) {
-      setMessage("A cím és a kezdés dátuma kötelező!");
+
+    if (!name || !location || !organizer || !startDate || !audience) {
+      setStatus({ success: false, message: "Kérlek, tölts ki minden kötelező mezőt!" });
       return;
     }
 
-    const { error } = await supabase.from("events").insert([
-      {
-        title,
-        start_date: startDate,
-        end_date: endDate || null,
-        location,
-        description,
-        target_group: targetGroup,
-        contact,
-        organizer,
-        registration_link: registrationLink,
-        user_id: user.id
-      }
-    ]);
+    try {
+      // 🔹 Ellenőrizzük, hogy a közösség már létezik
+      const { data: existing, error: checkError } = await supabase
+        .from("communities")
+        .select("*")
+        .eq("name", organizer)
+        .single();
 
-    if (error) {
-      setMessage("Hiba az esemény hozzáadásakor: " + error.message);
+      if (checkError && checkError.code !== "PGRST116") throw checkError;
+
+      if (!existing) {
+        // új közösség beszúrása
+        const { error: insertCommError } = await supabase
+          .from("communities")
+          .insert([{ name: organizer }]);
+        if (insertCommError) throw insertCommError;
+      }
+
+      // 🔹 Beszúrjuk az eseményt
+      const { error: insertEventError } = await supabase.from("events").insert([
+        {
+          title: name,
+          location,
+          organizer,
+          start_date: startDate,
+          audience,
+          description,
+          registration_link: registrationLink,
+        },
+      ]);
+      if (insertEventError) throw insertEventError;
+
+      setStatus({ success: true, message: "Lelkigyakorlat sikeresen hozzáadva!" });
+
+      // mezők ürítése
+      setName("");
+      setLocation("");
+      setOrganizer("");
+      setStartDate("");
+      setAudience("");
+      setDescription("");
+      setRegistrationLink("");
+      setCommunitySuggestions([]);
+
+    } catch (err) {
+      console.error(err);
+      setStatus({ success: false, message: "Hiba történt: " + err.message });
+    }
+  };
+
+  // 🔹 Közösség keresés gépelés közben
+  const handleOrganizerChange = async (e) => {
+    const val = e.target.value;
+    setOrganizer(val);
+
+    if (val.length > 0) {
+      const { data, error } = await supabase
+        .from("communities")
+        .select("name")
+        .ilike("name", `${val}%`)
+        .limit(5);
+      if (!error) setCommunitySuggestions(data.map(d => d.name));
     } else {
-      setMessage("Sikeresen hozzáadva!");
-      // opcionálisan törölhetjük a mezőket
-      setTitle(""); setStartDate(""); setEndDate(""); setLocation("");
-      setDescription(""); setTargetGroup("Mindenki"); setContact("");
-      setOrganizer(""); setRegistrationLink("");
+      setCommunitySuggestions([]);
     }
   };
 
   return (
     <div className="container mt-4">
-      <h3>Új lelkigyakorlat hozzáadása</h3>
-      {message && <p>{message}</p>}
+      <button className="btn btn-secondary mb-3" onClick={onBack}>
+        &larr; Vissza
+      </button>
+
+      <h2>Lelkigyakorlat hozzáadása</h2>
+
+      {status && (
+        <div
+          className={`alert ${status.success ? "alert-success" : "alert-danger"}`}
+          role="alert"
+        >
+          {status.message}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         <div className="mb-3">
           <label className="form-label">Megnevezés</label>
-          <input type="text" className="form-control" value={title} onChange={e => setTitle(e.target.value)} />
+          <input
+            type="text"
+            className="form-control"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
         </div>
-        <div className="mb-3">
-          <label className="form-label">Kezdés dátuma</label>
-          <input type="date" className="form-control" value={startDate} onChange={e => setStartDate(e.target.value)} />
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Befejezés dátuma</label>
-          <input type="date" className="form-control" value={endDate} onChange={e => setEndDate(e.target.value)} />
-        </div>
+
         <div className="mb-3">
           <label className="form-label">Helyszín</label>
-          <input type="text" className="form-control" value={location} onChange={e => setLocation(e.target.value)} />
+          <input
+            type="text"
+            className="form-control"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            required
+          />
         </div>
+
+        <div className="mb-3 position-relative">
+          <label className="form-label">Szervező közösség</label>
+          <input
+            type="text"
+            className="form-control"
+            value={organizer}
+            onChange={handleOrganizerChange}
+            required
+            autoComplete="off"
+          />
+          {communitySuggestions.length > 0 && (
+            <ul className="list-group position-absolute w-100 z-index-10">
+              {communitySuggestions.map((c, idx) => (
+                <li
+                  key={idx}
+                  className="list-group-item list-group-item-action"
+                  onClick={() => {
+                    setOrganizer(c);
+                    setCommunitySuggestions([]);
+                  }}
+                >
+                  {c}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <div className="mb-3">
-          <label className="form-label">Leírás</label>
-          <textarea className="form-control" value={description} onChange={e => setDescription(e.target.value)} />
+          <label className="form-label">Kezdés dátuma</label>
+          <input
+            type="date"
+            className="form-control"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            required
+          />
         </div>
+
         <div className="mb-3">
           <label className="form-label">Célcsoport</label>
-          <select className="form-select" value={targetGroup} onChange={e => setTargetGroup(e.target.value)}>
-            <option>Mindenki</option>
-            <option>Fiatalok</option>
-            <option>Idősek</option>
-            <option>Fiatal házasok</option>
-            <option>Érett házasok</option>
-            <option>Jegyesek</option>
-            <option>Tinédzserek</option>
-            <option>Családok</option>
+          <select
+            className="form-control"
+            value={audience}
+            onChange={(e) => setAudience(e.target.value)}
+            required
+          >
+            <option value="">-- Válassz --</option>
+            <option value="Fiatalok">Fiatalok</option>
+            <option value="Mindenki">Mindenki</option>
+            <option value="Idősek">Idősek</option>
+            <option value="Fiatal házasok">Fiatal házasok</option>
+            <option value="Érett házasok">Érett házasok</option>
+            <option value="Jegyesek">Jegyesek</option>
+            <option value="Tinédzserek">Tinédzserek</option>
+            <option value="Családok">Családok</option>
           </select>
         </div>
+
         <div className="mb-3">
-          <label className="form-label">Kapcsolattartó</label>
-          <input type="text" className="form-control" value={contact} onChange={e => setContact(e.target.value)} />
+          <label className="form-label">Leírás</label>
+          <textarea
+            className="form-control"
+            rows="3"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          ></textarea>
         </div>
-        <div className="mb-3">
-          <label className="form-label">Szervező közösség</label>
-          <input list="organizers" className="form-control" value={organizer} onChange={e => setOrganizer(e.target.value)} />
-          <datalist id="organizers">
-            {organizerOptions.map((o, idx) => <option key={idx} value={o} />)}
-          </datalist>
-        </div>
+
         <div className="mb-3">
           <label className="form-label">Jelentkezési link</label>
-          <input type="url" className="form-control" value={registrationLink} onChange={e => setRegistrationLink(e.target.value)} />
+          <input
+            type="url"
+            className="form-control"
+            value={registrationLink}
+            onChange={(e) => setRegistrationLink(e.target.value)}
+          />
         </div>
-        <button type="submit" className="btn btn-primary">Hozzáadás</button>
+
+        <button type="submit" className="btn btn-primary">
+          Hozzáadás
+        </button>
       </form>
     </div>
   );
