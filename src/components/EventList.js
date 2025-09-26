@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import headerImage from "../assets/header.jpg";
-import placeholderImage from "../card_1.jpg";
+import placeholderImage from "../assets/card_1.jpg";
 
 export default function EventList({ user }) {
   const [events, setEvents] = useState([]);
