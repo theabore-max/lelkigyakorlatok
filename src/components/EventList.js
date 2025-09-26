@@ -56,8 +56,8 @@ export default function EventList({ user }) {
       {/* Figyelmeztetés csak nem belépett usernek */}
       {!user && (
         <div className="alert alert-info text-center">
-          A lelkigyakorlat létrehozásához be kell lépned. 
-          Csak a saját eseményeidet tudod törölni vagy módosítani.
+          Lelkigyakorlat létrehozásához be kell lépned, majd belépés után tudod a saját eseményeidet törölni vagy módosítani.
+		  A lelkigyakorlatok böngészése belépés nélkül is működik.
         </div>
       )}
 
