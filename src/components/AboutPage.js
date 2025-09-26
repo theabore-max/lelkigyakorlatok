@@ -15,9 +15,9 @@ export default function AboutPage({ onBack }) {
       }}
     >
       <div className="container py-5">
-        <button className="btn btn-light mb-3" onClick={onBack}>
+	  {/*<button className="btn btn-light mb-3" onClick={onBack}>
           &larr; Vissza
-        </button>		
+	  </button>*/}		
         <div className="bg-white bg-opacity-75 p-4 rounded">
           <h2>Az oldal célja</h2>
           <h5>

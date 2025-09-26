@@ -5,9 +5,9 @@ import contactImage from "../assets/contact.jpg";
 export default function ContactPage({ onBack }) {
   return (
     <div className="container mt-4">
-      <button className="btn btn-secondary mb-3" onClick={onBack}>
+      {/*<button className="btn btn-secondary mb-3" onClick={onBack}>
         &larr; Vissza
-      </button>
+      </button> */}
 
       <div className="text-center mb-4">
         <img src={contactImage} alt="Kapcsolat" className="img-fluid rounded" />
