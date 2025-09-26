@@ -90,7 +90,7 @@ export default function EventList({ user }) {
                     src={placeholderImage}
                     className="card-img-top"
                     alt="Esemény"
-                    style={{ height: "200px", objectFit: "cover" }}
+                    style={{ height: "20px", objectFit: "cover" }}
                   />
                   <div className="card-body">
                     <h5 className="card-title">{event.title}</h5>
