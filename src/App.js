@@ -9,7 +9,7 @@ function App() {
   return (
     <>
       {/* Navigációs sáv */}
-      <Navbar bg="light" expand="lg">
+     {/*  <Navbar bg="light" expand="lg">
         <Container>
           <Navbar.Brand
             onClick={() => setCurrentPage("home")}
@@ -27,7 +27,7 @@ function App() {
             <Nav.Link onClick={() => setCurrentPage("login")}>Belépés</Nav.Link>
           </Nav>
         </Container>
-      </Navbar>
+      </Navbar>*/}
 
       {/* PageContent megjeleníti az aktuális oldalt */}
       <Container className="mt-4">
