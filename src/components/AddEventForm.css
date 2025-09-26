@@ -1,0 +1,13 @@
+/* src/components/AddEventForm.css */
+.suggestions {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  z-index: 1000;
+}
+
+.suggestions.show {
+  max-height: 150px;
+  opacity: 1;
+}
