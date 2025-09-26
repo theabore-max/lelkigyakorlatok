@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import addEventImage from "../assets/addevent.jpg";
-import "./AddEventForm.css"; // CSS a javaslatlistához és animációkhoz
+import "./AddEventForm.css";
 
 export default function AddEventForm({ user, onBack }) {
   const [title, setTitle] = useState("");
@@ -17,6 +17,17 @@ export default function AddEventForm({ user, onBack }) {
   const [registrationLink, setRegistrationLink] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapperRef = useRef(null);
+
+  const targetGroups = [
+    "Fiatalok",
+    "Mindenki",
+    "Idősek",
+    "Fiatal házasok",
+    "Érett házasok",
+    "Jegyesek",
+    "Tinédzserek",
+    "Családok",
+  ];
 
   // Közösségek lekérése
   useEffect(() => {
@@ -38,7 +49,6 @@ export default function AddEventForm({ user, onBack }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Közösség input változása
   const handleCommunityChange = (e) => {
     const value = e.target.value;
     setCommunity(value);
@@ -97,7 +107,7 @@ export default function AddEventForm({ user, onBack }) {
         contact,
         community_id: communityId,
         registration_link: registrationLink,
-        user_id: user?.id,
+        created_by: user?.id,
       },
     ]);
 
@@ -112,12 +122,10 @@ export default function AddEventForm({ user, onBack }) {
       </button>
       <h2>Lelkigyakorlat hozzáadása</h2>
       <form onSubmit={handleSubmit} className="row g-3 mt-2">
-        {/* Kép bal oldalon */}
         <div className="col-md-6 d-flex align-items-center justify-content-center">
           <img src={addEventImage} alt="Lelkigyakorlat" className="img-fluid rounded" />
         </div>
 
-        {/* Mezők jobbra */}
         <div className="col-md-6">
           <div className="mb-3">
             <label className="form-label">Megnevezés *</label>
@@ -132,18 +140,22 @@ export default function AddEventForm({ user, onBack }) {
 
           <div className="mb-3">
             <label className="form-label">Célcsoport *</label>
-            <input type="text" className="form-control" value={targetGroup} onChange={e => setTargetGroup(e.target.value)} />
-            <small className="form-text text-muted fst-italic">Pl. Fiatalok, Mindenki, Idősek</small>
+            <select className="form-select" value={targetGroup} onChange={e => setTargetGroup(e.target.value)}>
+              <option value="">Válassz célcsoportot</option>
+              {targetGroups.map((tg) => (
+                <option key={tg} value={tg}>{tg}</option>
+              ))}
+            </select>
           </div>
 
           <div className="mb-3">
             <label className="form-label">Kezdés *</label>
-            <input type="date" className="form-control" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <input type="datetime-local" className="form-control" value={startDate} onChange={e => setStartDate(e.target.value)} />
           </div>
 
           <div className="mb-3">
             <label className="form-label">Befejezés</label>
-            <input type="date" className="form-control" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <input type="datetime-local" className="form-control" value={endDate} onChange={e => setEndDate(e.target.value)} />
           </div>
 
           <div className="mb-3">
