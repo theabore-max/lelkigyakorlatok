@@ -47,14 +47,14 @@ export default function EventList({ user }) {
     page * pageSize,
     (page + 1) * pageSize
   );
-
-  return (
-     {/* Figyelmeztetés csak nem belépett usernek */}
+  {/* Figyelmeztetés csak nem belépett usernek */}
       {!user && (
         <div className="alert alert-info text-center">
           Lelkigyakorlatok létrehozásához be kell lépned, ezután tudod a saját eseményeidet törölni vagy módosítani. A lelkigyakorlatok böngészése belépés nélkül is működik. Jó böngészést!
         </div>
       )}
+  return (
+   
 	<div className="container mt-4">
       {/* Header */}
       <div className="text-center mb-4">
