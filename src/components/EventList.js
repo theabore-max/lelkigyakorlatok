@@ -1,7 +1,7 @@
 // src/components/EventList.js
 import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
-import placeholderImage from "../assets/placeholder.jpg";
+import placeholderImage from "../assets/card_1.jpg";
 import { Modal, Button } from "react-bootstrap";
 
 export default function EventList({ user }) {
