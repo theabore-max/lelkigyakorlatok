@@ -2,40 +2,46 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import placeholderImage from "../assets/card_1.jpg";
-import { Modal, Button } from "react-bootstrap";
 
 export default function EventList({ user }) {
   const [events, setEvents] = useState([]);
   const [filter, setFilter] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
-  const [visibleCount, setVisibleCount] = useState(9);
   const [selectedEvent, setSelectedEvent] = useState(null);
 
   useEffect(() => {
     fetchEvents();
   }, []);
 
+  // Fetch events and join with communities
   async function fetchEvents() {
-    const { data, error } = await supabase
+    const { data: eventsData, error: eventsError } = await supabase
       .from("events")
-      .select(`
-        id,
-        name,
-        description,
-        start_date,
-        end_date,
-        registration_link,
-        contact,
-        target_audience,
-        communities (id, name)
-      `)
+      .select("*")
       .order("start_date", { ascending: true });
 
-    if (error) {
-      console.error("Hiba a lekérdezéskor:", error.message);
-    } else {
-      setEvents(data || []);
+    if (eventsError) {
+      console.error("Hiba az események lekérdezésekor:", eventsError.message);
+      return;
     }
+
+    // Lekérdezzük a közösségeket és párosítjuk
+    const { data: communitiesData, error: communitiesError } = await supabase
+      .from("communities")
+      .select("*");
+
+    if (communitiesError) {
+      console.error("Hiba a közösségek lekérdezésekor:", communitiesError.message);
+      return;
+    }
+
+    // Összekapcsoljuk az eseményeket a közösségek nevével
+    const eventsWithCommunities = eventsData.map((event) => {
+      const community = communitiesData.find(c => c.id === event.community_id);
+      return { ...event, communityName: community ? community.name : "Nincs megadva" };
+    });
+
+    setEvents(eventsWithCommunities);
   }
 
   const filteredEvents = events.filter((event) => {
@@ -47,15 +53,6 @@ export default function EventList({ user }) {
       targetAudience === "" || event.target_audience === targetAudience;
     return matchesFilter && matchesAudience;
   });
-
-  const visibleEvents = filteredEvents.slice(0, visibleCount);
-
-  const formatDateTime = (datetime) => {
-    if (!datetime) return "";
-    const date = new Date(datetime);
-    const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return date.toLocaleDateString("hu-HU", options);
-  };
 
   return (
     <div className="container mt-4">
@@ -100,12 +97,15 @@ export default function EventList({ user }) {
 
         <div className="col-md-9">
           <div className="row">
-            {visibleEvents.map((event) => (
+            {filteredEvents.length === 0 && (
+              <p className="text-center">Nincs elérhető esemény</p>
+            )}
+            {filteredEvents.map((event) => (
               <div className="col-md-4 mb-4" key={event.id}>
                 <div
                   className="card h-100"
-                  onClick={() => setSelectedEvent(event)}
                   style={{ cursor: "pointer" }}
+                  onClick={() => setSelectedEvent(event)}
                 >
                   <img
                     src={placeholderImage}
@@ -115,71 +115,30 @@ export default function EventList({ user }) {
                   />
                   <div className="card-body">
                     <h5 className="card-title">{event.name}</h5>
-                    <p className="card-text text-truncate">
-                      {event.description}
+                    <p className="card-text text-truncate">{event.description}</p>
+                    <p className="card-text">
+                      <strong>Szervező közösség:</strong> {event.communityName}
                     </p>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-
-          {visibleCount < filteredEvents.length && (
-            <div className="text-center mt-3">
-              <button
-                className="btn btn-primary"
-                onClick={() => setVisibleCount(visibleCount + 9)}
-              >
-                Tovább
-              </button>
-            </div>
-          )}
-
-          {visibleCount > 9 && (
-            <div className="text-center mt-3">
-              <button
-                className="btn btn-secondary"
-                onClick={() => setVisibleCount(9)}
-              >
-                Vissza
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
       {selectedEvent && (
-        <Modal show onHide={() => setSelectedEvent(null)}>
-          <Modal.Header closeButton>
-            <Modal.Title>{selectedEvent.name}</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <p><strong>Leírás:</strong> {selectedEvent.description}</p>
-            <p><strong>Célcsoport:</strong> {selectedEvent.target_audience}</p>
-            <p><strong>Kezdés:</strong> {formatDateTime(selectedEvent.start_date)}</p>
-            <p><strong>Befejezés:</strong> {formatDateTime(selectedEvent.end_date)}</p>
-            <p><strong>Kapcsolattartó:</strong> {selectedEvent.contact}</p>
-            <p>
-              <strong>Szervező közösség:</strong>{" "}
-              {selectedEvent.communities?.name || "Nincs megadva"}
-            </p>
-            <p>
-              <strong>Jelentkezési link:</strong>{" "}
-              <a
-                href={selectedEvent.registration_link}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {selectedEvent.registration_link}
-              </a>
-            </p>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setSelectedEvent(null)}>
-              Bezárás
-            </Button>
-          </Modal.Footer>
-        </Modal>
+        <div className="mt-4">
+          <h3>{selectedEvent.name}</h3>
+          <p>{selectedEvent.description}</p>
+          <p><strong>Célcsoport:</strong> {selectedEvent.target_audience}</p>
+          <p><strong>Kezdés:</strong> {new Date(selectedEvent.start_date).toLocaleString("hu-HU")}</p>
+          <p><strong>Befejezés:</strong> {new Date(selectedEvent.end_date).toLocaleString("hu-HU")}</p>
+          <p><strong>Kapcsolattartó:</strong> {selectedEvent.contact}</p>
+          <p><strong>Szervező közösség:</strong> {selectedEvent.communityName}</p>
+          <p><strong>Jelentkezési link:</strong> <a href={selectedEvent.registration_link} target="_blank" rel="noopener noreferrer">{selectedEvent.registration_link}</a></p>
+          <button className="btn btn-secondary mt-3" onClick={() => setSelectedEvent(null)}>Vissza</button>
+        </div>
       )}
     </div>
   );
