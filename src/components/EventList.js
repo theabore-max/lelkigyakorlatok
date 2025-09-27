@@ -47,16 +47,16 @@ export default function EventList({ user }) {
     page * pageSize,
     (page + 1) * pageSize
   );
-  {/* Figyelmeztetés csak nem belépett usernek */}
-      {!user && (
+  
+  return (
+   
+	<div className="container mt-4">
+       {!user && (
         <div className="alert alert-info text-center">
           Lelkigyakorlatok létrehozásához be kell lépned, ezután tudod a saját eseményeidet törölni vagy módosítani. A lelkigyakorlatok böngészése belépés nélkül is működik. Jó böngészést!
         </div>
       )}
-  return (
-   
-	<div className="container mt-4">
-      {/* Header */}
+	  {/* Header */}
       <div className="text-center mb-4">
         <img
           src={headerImage}
@@ -66,7 +66,8 @@ export default function EventList({ user }) {
         <h1 className="mt-3">Katolikus Lelkigyakorlat-kereső</h1>
         <h4>Találd meg azt a lelkigyakorlatot, ami neked szól!</h4>
       </div>
-
+		{/* Figyelmeztetés csak nem belépett usernek */}
+     
      
 
       <div className="row">
