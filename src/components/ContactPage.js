@@ -15,15 +15,18 @@ export default function ContactPage({ onBack }) {
 
       <h2>Kapcsolat</h2>
       <h5>
-        Ha technikai problémát tapasztalsz az oldalon, vagy új lelkigyakorlatot szeretnél felvinni, írj nekünk bátran a
+        Ha technikai problémát tapasztalsz az oldalon, írj nekünk bátran a
         <p>
 		</p>
 	  </h5>
-      <p>
+      <h6>
         <strong>lgykereso@gmail.com</strong>
-      </p>
+      </h6>
       <h5>
-        címre – örömmel segítünk! Szívesen fogadjuk a visszajelzéseidet és ötleteidet is, hogyan tehetnénk még jobbá az oldalt. 
+        címre – örömmel segítünk! 
+	  </h5>
+	  <h5> 
+	    Szívesen fogadjuk a visszajelzéseidet és ötleteidet is, hogyan tehetnénk még jobbá az oldalt. 
         Igyekszünk minden üzenetre néhány napon belül válaszolni. Kérjük, vedd figyelembe, hogy ezen a címen technikai és szervezési 
         ügyekben tudunk segíteni, lelki vezetést vagy tanácsadást nem tudunk biztosítani.
       </h5>
