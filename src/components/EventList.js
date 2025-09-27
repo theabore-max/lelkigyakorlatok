@@ -50,100 +50,104 @@ export default function EventList({ user }) {
 
   const visibleEvents = filteredEvents.slice(0, visibleCount);
 
+  const formatDateTime = (datetime) => {
+    if (!datetime) return "";
+    const date = new Date(datetime);
+    const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return date.toLocaleDateString("hu-HU", options);
+  };
+
   return (
     <div className="container mt-4">
-      {/* Figyelmeztetés csak nem belépett usernek */}
       {!user && (
-        <div className="alert alert-info text-center">
+        <div className="alert alert-info text-center mb-3">
           Lelkigyakorlatok létrehozásához be kell lépned, ezután tudod a saját
           eseményeidet törölni vagy módosítani. A lelkigyakorlatok böngészése
           belépés nélkül is működik. Jó böngészést!
         </div>
       )}
 
-      {/* Kép és cím */}
-      <div className="text-center mb-4">
-        <img
-          src={placeholderImage}
-          alt="Lelkigyakorlat"
-          className="img-fluid rounded mb-3"
-          style={{ maxHeight: "200px" }}
-        />
-        <h1>Katolikus Lelkigyakorlat-kereső</h1>
-      </div>
-
-      {/* Szűrők */}
-      <div className="row mb-4">
-        <div className="col-md-6">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Keresés név vagy leírás alapján..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
-        </div>
-        <div className="col-md-6">
-          <select
-            className="form-select"
-            value={targetAudience}
-            onChange={(e) => setTargetAudience(e.target.value)}
-          >
-            <option value="">Válassz célcsoportot</option>
-            <option value="Fiatalok">Fiatalok</option>
-            <option value="Családok">Családok</option>
-            <option value="Papok">Papok</option>
-            <option value="Szerzetesek">Szerzetesek</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Esemény kártyák */}
       <div className="row">
-        {visibleEvents.map((event) => (
-          <div className="col-md-4 mb-4" key={event.id}>
-            <div
-              className="card h-100"
-              onClick={() => setSelectedEvent(event)}
-              style={{ cursor: "pointer" }}
-            >
-              <img
-                src={placeholderImage}
-                alt="Esemény"
-                className="card-img-top"
-                style={{ height: "200px", objectFit: "cover" }}
-              />
-              <div className="card-body">
-                <h5 className="card-title">{event.name}</h5>
-                <p className="card-text">{event.description}</p>
-              </div>
-            </div>
+        <div className="col-md-3">
+          <h5>Szűrés</h5>
+          <div className="mb-3">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Keresés név vagy leírás alapján..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            />
           </div>
-        ))}
+          <div className="mb-3">
+            <select
+              className="form-select"
+              value={targetAudience}
+              onChange={(e) => setTargetAudience(e.target.value)}
+            >
+              <option value="">Válassz célcsoportot</option>
+              <option value="Fiatalok">Fiatalok</option>
+              <option value="Mindenki">Mindenki</option>
+              <option value="Idősek">Idősek</option>
+              <option value="Fiatal házasok">Fiatal házasok</option>
+              <option value="Érett házasok">Érett házasok</option>
+              <option value="Jegyesek">Jegyesek</option>
+              <option value="Tinédzserek">Tinédzserek</option>
+              <option value="Családok">Családok</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="col-md-9">
+          <div className="row">
+            {visibleEvents.map((event) => (
+              <div className="col-md-4 mb-4" key={event.id}>
+                <div
+                  className="card h-100"
+                  onClick={() => setSelectedEvent(event)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <img
+                    src={placeholderImage}
+                    alt="Esemény"
+                    className="card-img-top"
+                    style={{ height: "200px", objectFit: "cover" }}
+                  />
+                  <div className="card-body">
+                    <h5 className="card-title">{event.name}</h5>
+                    <p className="card-text text-truncate">
+                      {event.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {visibleCount < filteredEvents.length && (
+            <div className="text-center mt-3">
+              <button
+                className="btn btn-primary"
+                onClick={() => setVisibleCount(visibleCount + 9)}
+              >
+                Tovább
+              </button>
+            </div>
+          )}
+
+          {visibleCount > 9 && (
+            <div className="text-center mt-3">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setVisibleCount(9)}
+              >
+                Vissza
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Tovább gomb */}
-      {visibleCount < filteredEvents.length && (
-        <div className="text-center mt-3">
-          <button
-            className="btn btn-primary"
-            onClick={() => setVisibleCount(visibleCount + 9)}
-          >
-            Tovább
-          </button>
-        </div>
-      )}
-
-      {/* Vissza gomb */}
-      {visibleCount > 9 && (
-        <div className="text-center mt-3">
-          <button className="btn btn-secondary" onClick={() => setVisibleCount(9)}>
-            Vissza
-          </button>
-        </div>
-      )}
-
-      {/* Modal az esemény részleteihez */}
       {selectedEvent && (
         <Modal show onHide={() => setSelectedEvent(null)}>
           <Modal.Header closeButton>
@@ -152,8 +156,8 @@ export default function EventList({ user }) {
           <Modal.Body>
             <p><strong>Leírás:</strong> {selectedEvent.description}</p>
             <p><strong>Célcsoport:</strong> {selectedEvent.target_audience}</p>
-            <p><strong>Kezdés:</strong> {selectedEvent.start_date}</p>
-            <p><strong>Befejezés:</strong> {selectedEvent.end_date}</p>
+            <p><strong>Kezdés:</strong> {formatDateTime(selectedEvent.start_date)}</p>
+            <p><strong>Befejezés:</strong> {formatDateTime(selectedEvent.end_date)}</p>
             <p><strong>Kapcsolattartó:</strong> {selectedEvent.contact}</p>
             <p>
               <strong>Szervező közösség:</strong>{" "}
