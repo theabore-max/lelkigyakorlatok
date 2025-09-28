@@ -27,12 +27,24 @@ export default function EventList({ user }) {
   }, []);
 
   async function fetchEvents() {
-    const today = new Date().toISOString();
-    let { data, error } = await supabase
-      .from("events")
-      .select("*")
-      .gte("start_date", today)
-      .order("start_date", { ascending: true })	  ;
+   const { data, error } = await supabase
+  .from("events")
+  .select(`
+    id,
+    title,
+    description,
+    start_date,
+    end_date,
+    contact,
+	registration_link,    
+    target_group,
+    communities (id, name),
+	location
+  `)
+  .gte("start_date", new Date().toISOString()) // csak jövőbeli események
+  .order("start_date", { ascending: true });
+
+
 
     if (error) console.log("Hiba az események lekérdezésénél:", error);
     else setEvents(data);
@@ -114,7 +126,7 @@ export default function EventList({ user }) {
                     style={{ height: "20px", objectFit: "cover" }}
                   />
                   <div className="card-body">
-                    <h5 className="card-title">{event.title}</h5>
+                    <h5 className="card-title">{event.name}</h5>
                     <p className="card-text">
                       {event.location} –{" "}
                       {new Date(event.start_date).toLocaleString()}
@@ -167,7 +179,7 @@ export default function EventList({ user }) {
               <strong>Kapcsolattartó:</strong> {selectedEvent.contact}
             </p>
             <p>
-              <strong>Szervező közösség:</strong> {selectedEvent.community}
+              <p><strong>Szervező közösség:</strong> {selectedEvent.communities?.name || "Nincs megadva"}</p>
             </p>
             <p>
               <strong>Jelentkezés link:</strong>{" "}
