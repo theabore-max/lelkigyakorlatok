@@ -30,9 +30,19 @@ export default function EventList({ user }) {
    const { data, error } = await supabase
   .from("events")
   .select(`
-    id, title, description, start_date, end_date, contact, registration_link, target group, communities (id, name), location
+    id,
+    name,
+    description,
+    start_date,
+    end_date,
+    registration_link,
+    contact,
+    target_audience,
+    communities (id, name)
   `)
+  .gte("start_date", new Date().toISOString()) // csak jövőbeli események
   .order("start_date", { ascending: true });
+
 
 
     if (error) console.log("Hiba az események lekérdezésénél:", error);
