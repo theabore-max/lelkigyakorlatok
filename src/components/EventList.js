@@ -168,7 +168,7 @@ export default function EventList({ user }) {
               <strong>Kapcsolattartó:</strong> {selectedEvent.contact}
             </p>
             <p>
-              <p><strong>Szervező közösség:</strong> {event.communities?.name || "Nincs megadva"}</p>
+              <p><strong>Szervező közösség:</strong> {selectedEvent.communities?.name || "Nincs megadva"}</p>
             </p>
             <p>
               <strong>Jelentkezés link:</strong>{" "}
