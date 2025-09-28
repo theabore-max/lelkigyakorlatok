@@ -31,14 +31,15 @@ export default function EventList({ user }) {
   .from("events")
   .select(`
     id,
-    name,
+    title,
     description,
     start_date,
     end_date,
-    registration_link,
     contact,
-    target_audience,
-    communities (id, name)
+	registration_link,    
+    target_group,
+    communities (id, name),
+	location
   `)
   .gte("start_date", new Date().toISOString()) // csak jövőbeli események
   .order("start_date", { ascending: true });
