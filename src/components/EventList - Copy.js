@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import headerImage from "../assets/header.jpg";
 import placeholderImage from "../assets/card_1.jpg"; // placeholder kép
+import { Modal, Button } from "react-bootstrap";
 
 export default function EventList({ user }) {
   const [events, setEvents] = useState([]);
@@ -17,7 +18,7 @@ export default function EventList({ user }) {
     "Érett házasok",
     "Jegyesek",
     "Tinédzserek",
-    "Családok"
+    "Családok",
   ]);
   const pageSize = 9;
 
@@ -31,7 +32,7 @@ export default function EventList({ user }) {
       .from("events")
       .select("*")
       .gte("start_date", today)
-      .order("start_date", { ascending: true });
+      .order("start_date", { ascending: true })	  ;
 
     if (error) console.log("Hiba az események lekérdezésénél:", error);
     else setEvents(data);
@@ -42,24 +43,31 @@ export default function EventList({ user }) {
     return true;
   });
 
-  const paginatedEvents = filteredEvents.slice(page * pageSize, (page + 1) * pageSize);
+  const paginatedEvents = filteredEvents.slice(
+    page * pageSize,
+    (page + 1) * pageSize
+  );
 
   return (
     <div className="container mt-4">
-      {/* Header */}
+      {/* Figyelmeztetés csak nem belépett usernek */}
+      {!user && (
+        <div className="alert alert-info text-center">
+          Lelkigyakorlatok létrehozásához be kell lépned, ezután tudod a saját eseményeidet törölni vagy módosítani. A lelkigyakorlatok böngészése belépés nélkül is működik. Jó böngészést!
+        </div>
+      )}
+	  {/* Header */}
       <div className="text-center mb-4">
-        <img src={headerImage} alt="Katolikus lelkigyakorlat" className="img-fluid rounded" />
+        <img
+          src={headerImage}
+          alt="Katolikus lelkigyakorlat"
+          className="img-fluid rounded"
+        />
         <h1 className="mt-3">Katolikus Lelkigyakorlat-kereső</h1>
         <h4>Találd meg azt a lelkigyakorlatot, ami neked szól!</h4>
       </div>
 
-      {/* Figyelmeztetés csak nem belépett usernek */}
-      {!user && (
-        <div className="alert alert-info text-center">
-          A lelkigyakorlat létrehozásához be kell lépned. 
-          Csak a saját eseményeidet tudod törölni vagy módosítani.
-        </div>
-      )}
+      
 
       <div className="row">
         {/* Bal oldali filterek */}
@@ -69,8 +77,14 @@ export default function EventList({ user }) {
             {targetGroups.map((group) => (
               <button
                 key={group}
-                className={`btn btn-outline-primary mb-2 ${filter === group ? "active" : ""}`}
-                onClick={() => { setFilter(group); setPage(0); setSelectedEvent(null); }}
+                className={`btn btn-outline-primary mb-2 ${
+                  filter === group ? "active" : ""
+                }`}
+                onClick={() => {
+                  setFilter(group);
+                  setPage(0);
+                  setSelectedEvent(null);
+                }}
               >
                 {group}
               </button>
@@ -80,40 +94,100 @@ export default function EventList({ user }) {
 
         {/* Jobb oldali események */}
         <div className="col-md-9">
-          {paginatedEvents.length === 0 && <p>Nincs elérhető esemény ehhez a célcsoporthoz.</p>}
+          {paginatedEvents.length === 0 && (
+            <p>Nincs elérhető esemény ehhez a célcsoporthoz.</p>
+          )}
 
-          {paginatedEvents.map((event) => (
-            <div key={event.id} className="card mb-3" onClick={() => setSelectedEvent(event)}>
-              {/* Placeholder kép a kártyán */}
-              <img
-                src={placeholderImage}
-                className="card-img-top"
-                alt="Esemény"
-              />
-              <div className="card-body">
-                <h5 className="card-title">{event.title}</h5>
-                <p className="card-text">{event.location} – {new Date(event.start_date).toLocaleString()}</p>
-                {selectedEvent && selectedEvent.id === event.id && (
-                  <div className="mt-2">
-                    <p><strong>Leírás:</strong> {event.description}</p>
-                    <p><strong>Célcsoport:</strong> {event.target_group}</p>
-                    <p><strong>Kezdés:</strong> {new Date(event.start_date).toLocaleString()}</p>
-                    <p><strong>Befejezés:</strong> {new Date(event.end_date).toLocaleString()}</p>
-                    <p><strong>Kapcsolattartó:</strong> {event.contact}</p>
-                    <p><strong>Szervező közösség:</strong> {event.community}</p>
-                    <p><strong>Jelentkezés link:</strong> <a href={event.registration_link}>{event.registration_link}</a></p>
+          <div className="row">
+            {paginatedEvents.map((event) => (
+              <div key={event.id} className="col-md-4 mb-3">
+                <div
+                  className="card h-100"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setSelectedEvent(event)}
+                >
+                  {/* Placeholder kép a kártya tetején, fix magasság */}
+                  <img
+                    src={placeholderImage}
+                    className="card-img-top"
+                    alt="Esemény"
+                    style={{ height: "20px", objectFit: "cover" }}
+                  />
+                  <div className="card-body">
+                    <h5 className="card-title">{event.title}</h5>
+                    <p className="card-text">
+                      {event.location} –{" "}
+                      {new Date(event.start_date).toLocaleString()}
+                    </p>
                   </div>
-                )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
 
           {/* Tovább gomb */}
           {filteredEvents.length > pageSize * (page + 1) && (
-            <button className="btn btn-primary" onClick={() => setPage(page + 1)}>Tovább</button>
+            <button
+              className="btn btn-primary mt-3"
+              onClick={() => setPage(page + 1)}
+            >
+              Tovább
+            </button>
           )}
         </div>
       </div>
+
+      {/* Modal az esemény részletekhez */}
+      {selectedEvent && (
+        <Modal
+          show={true}
+          onHide={() => setSelectedEvent(null)}
+          centered
+          size="lg"
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>{selectedEvent.title}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <p>
+              <strong>Leírás:</strong> {selectedEvent.description}
+            </p>
+            <p>
+              <strong>Célcsoport:</strong> {selectedEvent.target_group}
+            </p>
+            <p>
+              <strong>Kezdés:</strong>{" "}
+              {new Date(selectedEvent.start_date).toLocaleString()}
+            </p>
+            <p>
+              <strong>Befejezés:</strong>{" "}
+              {new Date(selectedEvent.end_date).toLocaleString()}
+            </p>
+            <p>
+              <strong>Kapcsolattartó:</strong> {selectedEvent.contact}
+            </p>
+            <p>
+              <strong>Szervező közösség:</strong> {selectedEvent.community}
+            </p>
+            <p>
+              <strong>Jelentkezés link:</strong>{" "}
+              <a
+                href={selectedEvent.registration_link}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {selectedEvent.registration_link}
+              </a>
+            </p>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setSelectedEvent(null)}>
+              Vissza
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      )}
     </div>
   );
 }
+
