@@ -68,6 +68,14 @@ export default function PageContent() {
 			/>
 		</div>
 	  )}
+	  {currentPage === "editEvent" && selectedEvent && (
+       <EditEventForm
+        event={selectedEvent}
+        onCancel={() => setCurrentPage("home")}
+        onSuccess={() => setCurrentPage("home")}
+  />
+)}
+
     </div>
   );
 }

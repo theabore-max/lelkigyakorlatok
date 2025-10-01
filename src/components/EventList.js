@@ -43,6 +43,12 @@ export default function EventList({ user }) {
   `)
   .gte("start_date", new Date().toISOString()) // csak jövőbeli események
   .order("start_date", { ascending: true });
+		if (filter === "myEvents" && user) {
+		query = query.eq("created_by", user.id);
+		} else if (filter && filter !== "all") {
+		query = query.eq("target_group", filter);
+		}
+
 
 
 
@@ -100,6 +106,13 @@ export default function EventList({ user }) {
               >
                 {group}
               </button>
+			  <button
+				className={`btn btn-link d-block ${filter === "myEvents" ? "fw-bold" : ""}`}
+				onClick={() => setFilter("myEvents")}
+				>
+				Saját eseményeim
+				</button>
+
             ))}
           </div>
         </div>
@@ -131,9 +144,18 @@ export default function EventList({ user }) {
                       {event.location} –{" "}
                       {new Date(event.start_date).toLocaleString()}
                     </p>
-                  </div>
-                </div>
-              </div>
+					{/* Ha a user a létrehozó, akkor mutatjuk a szerkesztést */}
+					{user && user.id === event.created_by && (
+						<button
+						className="btn btn-sm btn-warning"
+						onClick={() => onEdit(event)}
+							>
+							Szerkesztés
+							</button>
+							)}
+                         </div>
+                      </div>
+                      </div>
             ))}
           </div>
 
@@ -191,11 +213,29 @@ export default function EventList({ user }) {
                 {selectedEvent.registration_link}
               </a>
             </p>
+			{/* csak a saját eseményeinél jelenjen meg */}
+      {user && user.id === event.created_by && (
+        <button
+          className="btn btn-warning btn-sm"
+          onClick={() => onEdit(event)}
+        >
+          ✏️ Szerkesztés
+        </button>
+      )}
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setSelectedEvent(null)}>
               Vissza
             </Button>
+			{/* csak a saját eseményeinél jelenjen meg */}
+      {user && user.id === event.created_by && (
+        <button
+          className="btn btn-warning btn-sm"
+          onClick={() => onEdit(event)}
+        >
+          ✏️ Szerkesztés
+        </button>
+      )}
           </Modal.Footer>
         </Modal>
       )}
