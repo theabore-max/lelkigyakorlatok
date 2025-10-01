@@ -15,6 +15,7 @@ export default function AddEventForm({ user, onBack }) {
   const [communitySuggestions, setCommunitySuggestions] = useState([]);
   const [communities, setCommunities] = useState([]);
   const [registrationLink, setRegistrationLink] = useState("");
+  const [location, setLocation] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapperRef = useRef(null);
 
@@ -117,9 +118,9 @@ export default function AddEventForm({ user, onBack }) {
 
   return (
     <div className="container mt-4">
-      <button className="btn btn-secondary mb-3" onClick={onBack}>
+     /* <button className="btn btn-secondary mb-3" onClick={onBack}>
         &larr; Vissza
-      </button>
+      </button>*/
       <h2>Lelkigyakorlat hozzáadása</h2>
       <form onSubmit={handleSubmit} className="row g-3 mt-2">
         <div className="col-md-6 d-flex align-items-center justify-content-center">
@@ -137,7 +138,12 @@ export default function AddEventForm({ user, onBack }) {
             <label className="form-label">Leírás</label>
             <textarea className="form-control" value={description} onChange={e => setDescription(e.target.value)} />
           </div>
-
+		  
+          <div className="mb-3">
+            <label className="form-label">Helyszín *</label>
+            <input type="text" className="form-control" value={location} onChange={e => setLocation(e.target.value)} />
+          </div>
+		  
           <div className="mb-3">
             <label className="form-label">Célcsoport *</label>
             <select className="form-select" value={targetGroup} onChange={e => setTargetGroup(e.target.value)}>
@@ -168,7 +174,7 @@ export default function AddEventForm({ user, onBack }) {
             <input
               type="text"
               className="form-control"
-              placeholder="Közösség neve vagy új"
+              placeholder="Kezd el írni a közösség nevét..."
               value={community}
               onChange={handleCommunityChange}
             />
