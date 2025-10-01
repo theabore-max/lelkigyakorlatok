@@ -18,6 +18,7 @@ export default function AddEventForm({ user, onEventAdded }) {
   const [location, setLocation] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapperRef = useRef(null);
+  const [error, setError] = useState(null);
 
   const targetGroups = [
     "Fiatalok",
