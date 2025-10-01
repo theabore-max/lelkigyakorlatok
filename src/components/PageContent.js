@@ -6,6 +6,7 @@ import EditEventForm from "./EditEventForm";
 import AboutPage from "./AboutPage";
 import ContactPage from "./ContactPage";
 import AuthPage from "./AuthPage";
+import EditEventForm from "./EditEventForm";
 
 export default function PageContent() {
   const [currentPage, setCurrentPage] = useState("home");
