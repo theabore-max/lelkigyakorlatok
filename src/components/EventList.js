@@ -1,7 +1,7 @@
 // src/components/EventList.js
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
-import placeholderImage from "../assets/placeholder.jpg";
+import placeholderImage from "../assets/card_1.jpg";
 import { Modal, Button } from "react-bootstrap";
 
 export default function EventList({ user, onEdit }) {
@@ -130,7 +130,7 @@ export default function EventList({ user, onEdit }) {
                     src={placeholderImage}
                     alt="Esemény"
                     className="card-img-top"
-                    style={{ height: "200px", objectFit: "cover" }}
+                    style={{ height: "20px", objectFit: "cover" }}
                   />
                   <div className="card-body">
                     <h5 className="card-title">{event.name}</h5>
