@@ -127,7 +127,7 @@ export default function EventList({ user }) {
                     style={{ height: "20px", objectFit: "cover" }}
                   />
                   <div className="card-body">
-                    <h5 className="card-title">{event.name}</h5>
+                    <h5 className="card-title">{event.title}</h5>
                     <p className="card-text">
                       {event.location} –{" "}
                       {new Date(event.start_date).toLocaleString()}
