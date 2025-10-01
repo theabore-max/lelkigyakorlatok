@@ -47,11 +47,11 @@ export default function EventList({ user, onEdit }) {
       ev.name?.toLowerCase().includes(filter.toLowerCase()) ||
       ev.description?.toLowerCase().includes(filter.toLowerCase());
     const matchesAudience =
-      targetGroup === ""
+      targetAudience === ""
         ? true
-        : targetGroup === "myEvents"
+        : targetAudience === "myEvents"
         ? user && ev.created_by === user.id
-        : ev.target_group === targetGroup;
+        : ev.target_group === targetAudience;
     return matchesSearch && matchesAudience;
   });
 
