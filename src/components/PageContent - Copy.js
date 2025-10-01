@@ -12,68 +12,70 @@ export default function PageContent() {
 
   return (
     <div>
-      {/* Navigation bar */}
-      <nav className="navbar navbar-expand-lg navbar-light bg-light border-bottom">
-        <div className="container d-flex justify-content-between">
-          <span
-            className="navbar-brand fw-bold"
-            style={{ cursor: "pointer" }}
-            onClick={() => setCurrentPage("home")}
-          >
-            Katolikus Lelkigyakorlat-kereső
-          </span>
-          <div>
-            <button className="btn btn-link text-dark" onClick={() => setCurrentPage("home")}>
-              Főoldal
+      {/* Navigációs sáv */}
+      <nav className="navbar navbar-expand-lg navbar-light bg-light">
+        <a className="navbar-brand" href="#" onClick={() => setCurrentPage("home")}>
+          Katolikus Lelkigyakorlat-kereső
+        </a>
+        <div className="ml-auto">
+          <button className="btn btn-link" onClick={() => setCurrentPage("about")}>Az oldal célja</button>
+          <button className="btn btn-link" onClick={() => setCurrentPage("contact")}>Kapcsolat</button>
+          {!user && (
+            <button className="btn btn-primary" onClick={() => setCurrentPage("auth")}>Belépés</button>
+          )}
+          {user && (
+            <button className="btn btn-success" onClick={() => setCurrentPage("addEvent")}>
+              Lelkigyakorlat hozzáadása
             </button>
-            <button className="btn btn-link text-dark" onClick={() => setCurrentPage("about")}>
-              Az oldal célja
-            </button>
-            <button className="btn btn-link text-dark" onClick={() => setCurrentPage("contact")}>
-              Kapcsolat
-            </button>
-            {!user && (
-              <button className="btn btn-outline-primary ms-2" onClick={() => setCurrentPage("auth")}>
-                Belépés
-              </button>
-            )}
-            {user && (
-              <button className="btn btn-success ms-2" onClick={() => setCurrentPage("addEvent")}>
-                Lelkigyakorlat hozzáadása
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </nav>
 
       {/* Oldalak */}
-      <div className="container mt-4">
-        {currentPage === "home" && <EventList user={user} />}
-        {currentPage === "about" && <AboutPage onBack={() => setCurrentPage("home")} />}
-        {currentPage === "contact" && <ContactPage onBack={() => setCurrentPage("home")} />}
-        {currentPage === "auth" && (
-          <AuthPage
-            onLoginSuccess={(loggedInUser) => {
-              setUser(loggedInUser);
-              setCurrentPage("home");
-            }}
-          />
-        )}
-        {currentPage === "addEvent" && (
-          <div>
-            <h2>Lelkigyakorlat hozzáadása</h2>
-            {currentPage === "addEvent" && (
-				<AddEventForm onBack={() => setCurrentPage("home")} />
-			)}
-            <button className="btn btn-secondary" onClick={() => setCurrentPage("home")}>
-              Vissza
-            </button>
-          </div>
-        )}
-      </div>
+      {currentPage === "home" && <EventList user={user} />}
+      {currentPage === "about" && (
+        <div className="container mt-4">
+          <button className="btn btn-secondary mb-3" onClick={() => setCurrentPage("home")}>
+            &larr; Vissza
+          </button>
+          <AboutPage />
+        </div>
+      )}
+      {currentPage === "contact" && (
+        <div className="container mt-4">
+          <button className="btn btn-secondary mb-3" onClick={() => setCurrentPage("home")}>
+            &larr; Vissza
+          </button>
+          <ContactPage />
+        </div>
+      )}
+      {currentPage === "auth" && (
+        <div className="container mt-4">
+          <button className="btn btn-secondary mb-3" onClick={() => setCurrentPage("home")}>
+            &larr; Vissza
+          </button>
+          <AuthPage onLoginSuccess={(user) => { setUser(user); setCurrentPage("home"); }} />
+        </div>
+      )}
+	  {currentPage === "addEvent" && (
+		<div className="container mt-4">
+			<button className="btn btn-secondary mb-3" onClick={() => setCurrentPage("home")}>
+				&larr; Vissza
+			</button>
+			<AddEventForm
+				user={user}
+				onEventAdded={() => setCurrentPage("home")}
+			/>
+		</div>
+	  )}
+	  {currentPage === "editEvent" && selectedEvent && (
+       <EditEventForm
+        event={selectedEvent}
+        onCancel={() => setCurrentPage("home")}
+        onSuccess={() => setCurrentPage("home")}
+  />
+)}
+
     </div>
   );
 }
-
-
-
