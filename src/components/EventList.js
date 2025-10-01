@@ -19,6 +19,7 @@ export default function EventList({ user }) {
     "Jegyesek",
     "Tinédzserek",
     "Családok",
+	"Saját eseményeim",
   ]);
   const pageSize = 9;
 
@@ -51,10 +52,25 @@ export default function EventList({ user }) {
     else setEvents(data);
   }
 
+ // const filteredEvents = events.filter((event) => {
+    //if (filter !== "Mindenki" && event.target_group !== filter) return false;
+   // return true;
+   
+  //});
   const filteredEvents = events.filter((event) => {
-    if (filter !== "Mindenki" && event.target_group !== filter) return false;
-    return true;
-  });
+  const matchesFilter =
+    filter === '' ||
+    event.name?.toLowerCase().includes(filter.toLowerCase()) ||
+    event.description?.toLowerCase().includes(filter.toLowerCase());
+
+  // ha a "Saját eseményeim" a célcsoport, csak a saját eseményeket hozza
+  const matchesAudience =
+    targetAudience === 'Saját eseményeim'
+      ? user && event.created_by === user.id
+      : targetAudience === '' || event.target_audience === targetAudience;
+
+  return matchesFilter && matchesAudience;
+});
 
   const paginatedEvents = filteredEvents.slice(
     page * pageSize,
@@ -200,6 +216,14 @@ export default function EventList({ user }) {
             <Button variant="secondary" onClick={() => setSelectedEvent(null)}>
               Vissza
             </Button>
+			{user && user.id === event.created_by && (
+			<button
+			className="btn btn-warning btn-sm"
+			onClick={() => onEdit(event)}  // a PageContent.js-ből kapott callback
+			>
+			✏️ Szerkesztés
+			</button>
+)}
           </Modal.Footer>
         </Modal>
       )}

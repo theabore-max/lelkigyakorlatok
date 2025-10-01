@@ -39,6 +39,13 @@ export default function PageContent() {
           }}
         />
       )}
+	  {currentPage === "editEvent" && selectedEvent && (
+		<EditEventForm
+			event={selectedEvent}
+			onCancel={() => setCurrentPage("home")}
+			onSuccess={() => setCurrentPage("home")}
+		/>
+)}
       {currentPage === "about" && (
         <div className="container mt-4">
           <button className="btn btn-secondary mb-3" onClick={() => setCurrentPage("home")}>
