@@ -32,6 +32,7 @@ export default function EventList({ user }) {
   .select(`
     id,
     title,
+	location,
     description,
     start_date,
     end_date,
