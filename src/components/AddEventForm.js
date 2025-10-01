@@ -102,6 +102,7 @@ export default function AddEventForm({ user, onBack }) {
       {
         title,
         description,
+		location,
         target_group: targetGroup,
         start_date: startDate,
         end_date: endDate,
@@ -112,15 +113,17 @@ export default function AddEventForm({ user, onBack }) {
       },
     ]);
 
-    if (error) alert("Hiba az esemény mentésekor: " + error.message);
-    else onBack();
+    if (error) {
+    setError(error.message);
+  } else {
+    setError(null);
+    alert("Esemény sikeresen hozzáadva!");
+    if (onEventAdded) onEventAdded();  // <-- visszalépés a főoldalra
+  }
   };
 
   return (
     <div className="container mt-4">
-     /* <button className="btn btn-secondary mb-3" onClick={onBack}>
-        &larr; Vissza
-      </button>*/
       <h2>Lelkigyakorlat hozzáadása</h2>
       <form onSubmit={handleSubmit} className="row g-3 mt-2">
         <div className="col-md-6 d-flex align-items-center justify-content-center">

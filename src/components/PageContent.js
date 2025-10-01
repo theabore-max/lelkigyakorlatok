@@ -57,14 +57,17 @@ export default function PageContent() {
           <AuthPage onLoginSuccess={(user) => { setUser(user); setCurrentPage("home"); }} />
         </div>
       )}
-      {currentPage === "addEvent" && (
-        <div className="container mt-4">
-          <button className="btn btn-secondary mb-3" onClick={() => setCurrentPage("home")}>
-            &larr; Vissza
-          </button>
-          <AddEventForm user={user} />
-        </div>
-      )}
+	  {currentPage === "addEvent" && (
+		<div className="container mt-4">
+			<button className="btn btn-secondary mb-3" onClick={() => setCurrentPage("home")}>
+				&larr; Vissza
+			</button>
+			<AddEventForm
+				user={user}
+				onEventAdded={() => setCurrentPage("home")}
+			/>
+		</div>
+	  )}
     </div>
   );
 }
