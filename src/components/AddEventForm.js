@@ -4,7 +4,7 @@ import { supabase } from "../supabaseClient";
 import addEventImage from "../assets/addevent.jpg";
 import "./AddEventForm.css";
 
-export default function AddEventForm({ user, onBack }) {
+export default function AddEventForm({ user, onEventAdded }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [targetGroup, setTargetGroup] = useState("");
