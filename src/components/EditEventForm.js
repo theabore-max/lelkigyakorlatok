@@ -27,27 +27,30 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const { error } = await supabase
-      .from("events")
-      .update({
-        title,
-        description,
-        target_group: targetGroup,
-        start_date: startDate,
-        end_date: endDate,
-        contact,
-        community_id: communityId,
-        registration_link: registrationLink,
-      })
-      .eq("id", event.id);
+    const { data, error } = await supabase
+    .from("events")
+    .update({
+      title,
+      description,
+      target_group: targetGroup,
+      start_date: startDate,
+      end_date: endDate,
+      contact,
+      community_id: communityId,
+      registration_link: registrationLink,
+    })
+    .eq("id", event.id)
+    .select("id"); // <- fontos: így tudjuk, volt-e tényleges update
 
-    if (error) {
-      setError(error.message);
-    } else {
-      setError(null);
-      alert("Esemény sikeresen frissítve!");
-      if (onSuccess) onSuccess();
-    }
+  if (error) {
+    setError(error.message);
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    setError("Nem találtam frissíthető rekordot (id nem egyezik?).");
+    return;
+  }
   };
 
   return (

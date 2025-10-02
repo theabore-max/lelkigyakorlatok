@@ -270,11 +270,14 @@ const filteredEvents = events.filter((event) => {
       <Modal.Title>Esemény szerkesztése</Modal.Title>
     </Modal.Header>
     <Modal.Body>
-      <EditEventForm
-        event={editEvent}
-        user={user}
-        onClose={() => setEditEvent(null)}
-      />
+		<EditEventForm
+		event={editEvent}
+		onCancel={() => setEditEvent(null)}
+		onSuccess={async () => {
+		setEditEvent(null);   // zárjuk a modalt
+			await fetchEvents();  // frissítsük a listát
+		  }}
+		/>
     </Modal.Body>
   </Modal>
 )}
