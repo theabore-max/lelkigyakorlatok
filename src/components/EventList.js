@@ -51,10 +51,19 @@ export default function EventList({ user }) {
     else setEvents(data);
   }
 
-  const filteredEvents = events.filter((event) => {
-    if (filter !== "Mindenki" && event.target_group !== filter) return false;
-    return true;
-  });
+  //const filteredEvents = events.filter((event) => {
+   // if (filter !== "Mindenki" && event.target_group !== filter) return false;
+   // return true;
+  //});
+
+const filteredEvents = events.filter((event) => {
+  if (filter === "sajat") {
+    return user && event.created_by === user.id; // <-- fontos: itt az events táblában legyen 'created_by'
+  }
+  if (filter !== "Mindenki" && event.target_group !== filter) return false;
+  return true;
+});
+
 
   const paginatedEvents = filteredEvents.slice(
     page * pageSize,
