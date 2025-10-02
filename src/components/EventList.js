@@ -51,9 +51,9 @@ export default function EventList({ user }) {
     else setEvents(data);
   }
 
-  //const filteredEvents = events.filter((event) => {
- //   if (filter !== "Mindenki" && event.target_group !== filter) return false;
- //   return true;
+  const filteredEvents = events.filter((event) => {
+    if (filter !== "Mindenki" && event.target_group !== filter) return false;
+    return true;
   });
 //const filteredEvents = events.filter((ev) => {
  // const matchesSearch =
