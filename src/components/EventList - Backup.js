@@ -40,7 +40,7 @@ export default function EventList({ user }) {
 	registration_link,    
     target_group,
     communities (id, name),
-	location
+	created_by
   `)
   .gte("start_date", new Date().toISOString()) // csak jövőbeli események
   .order("start_date", { ascending: true });
@@ -51,10 +51,20 @@ export default function EventList({ user }) {
     else setEvents(data);
   }
 
-  const filteredEvents = events.filter((event) => {
-    if (filter !== "Mindenki" && event.target_group !== filter) return false;
-    return true;
-  });
+  //const filteredEvents = events.filter((event) => {
+   // if (filter !== "Mindenki" && event.target_group !== filter) return false;
+   // return true;
+  //});
+
+const filteredEvents = events.filter((event) => {
+  if (filter === "sajat") {
+    return user && event.created_by === user.id; // <-- fontos: itt az events táblában legyen 'created_by'
+  }
+  if (filter !== "Mindenki" && event.target_group !== filter) return false;
+  return true;
+});
+
+
 
   const paginatedEvents = filteredEvents.slice(
     page * pageSize,
@@ -102,6 +112,21 @@ export default function EventList({ user }) {
                 {group}
               </button>
             ))}
+			  {/* Új gomb a saját eseményekhez */}
+  {user && (
+    <button
+      className={`btn btn-outline-success mt-3 ${
+        filter === "sajat" ? "active" : ""
+      }`}
+      onClick={() => {
+        setFilter("sajat");
+        setPage(0);
+        setSelectedEvent(null);
+      }}
+    >
+      Saját eseményeim
+    </button>
+  )}
           </div>
         </div>
 

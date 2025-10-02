@@ -4,12 +4,15 @@ import { supabase } from "../supabaseClient";
 import headerImage from "../assets/header.jpg";
 import placeholderImage from "../assets/card_1.jpg"; // placeholder kép
 import { Modal, Button } from "react-bootstrap";
+import EditEventForm from "./EditEventForm";
 
 export default function EventList({ user }) {
   const [events, setEvents] = useState([]);
   const [filter, setFilter] = useState("Mindenki");
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [page, setPage] = useState(0);
+  const [editEvent, setEditEvent] = useState(null);
+
   const [targetGroups, setTargetGroups] = useState([
     "Fiatalok",
     "Mindenki",
@@ -157,6 +160,18 @@ const filteredEvents = events.filter((event) => {
                       {event.location} –{" "}
                       {new Date(event.start_date).toLocaleString()}
                     </p>
+					 {/* Csak a saját eseményeknél mutasd a gombot */}
+					{user && event.created_by === user.id && (
+					<button
+					className="btn btn-sm btn-warning"
+					onClick={(e) => {
+					e.stopPropagation(); // ne nyissa meg a részletes modal-t
+					setEditEvent(event);
+					}}
+					>
+					✏️ Szerkesztés
+					</button>
+					)}
                   </div>
                 </div>
               </div>
@@ -221,11 +236,25 @@ const filteredEvents = events.filter((event) => {
               </a>
             </p>
           </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setSelectedEvent(null)}>
-              Vissza
-            </Button>
-          </Modal.Footer>
+          <Modal.Footer className="d-flex justify-content-between">
+			{/* Bal oldali gomb csak saját eseményekhez */}
+			{user && selectedEvent.created_by === user.id && (
+			<Button
+				variant="warning"
+				onClick={() => {
+				setEditEvent(selectedEvent);
+				setSelectedEvent(null); // Bezárjuk a részletező modalt
+				}}
+					>
+				✏️ Szerkesztés
+				</Button>
+					)}
+
+			  {/* Jobb oldali vissza gomb */}
+			  <Button variant="secondary" onClick={() => setSelectedEvent(null)}>
+				Vissza
+			  </Button>
+</Modal.Footer>
         </Modal>
       )}
     </div>
