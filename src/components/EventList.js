@@ -55,21 +55,6 @@ export default function EventList({ user }) {
     if (filter !== "Mindenki" && event.target_group !== filter) return false;
     return true;
   });
-//const filteredEvents = events.filter((ev) => {
- // const matchesSearch =
-  //  filter === "" ||
-  //  ev.name?.toLowerCase().includes(filter.toLowerCase()) ||
-  //  ev.description?.toLowerCase().includes(filter.toLowerCase());
-
- // const matchesAudience =
-  //  targetAudience === ""
-   //   ? true
-  //    : targetAudience === "myEvents"
-  //    ? user && ev.created_by === user.id
-  //    : ev.target_audience === targetAudience;
-
- // return matchesSearch && matchesAudience;
-//});
 
   const paginatedEvents = filteredEvents.slice(
     page * pageSize,
@@ -117,18 +102,6 @@ export default function EventList({ user }) {
                 {group}
               </button>
             ))}
-			{/* ÚJ gomb a saját eseményekhez */}
-			<button
-				key="myEvents"
-				className={`btn btn-outline-primary mb-2 ${filter === "myEvents" ? "active" : ""}`}
-				onClick={() => {
-				setFilter("myEvents");
-				setPage(0);
-				setSelectedEvent(null);
-				}}
-				>
-					Saját eseményeim
-				</button>
           </div>
         </div>
 
