@@ -7,8 +7,8 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
   const [title, setTitle] = useState(event.title || "");
   const [description, setDescription] = useState(event.description || "");
   const [targetGroup, setTargetGroup] = useState(event.target_group || "");
-  const [startDate, setStartDate] = useState(event.start_date || "");
-  const [endDate, setEndDate] = useState(event.end_date || "");
+ // const [startDate, setStartDate] = useState(event.start_date || "");
+//  const [endDate, setEndDate] = useState(event.end_date || "");
   const [contact, setContact] = useState(event.contact || "");
   const [communityId, setCommunityId] = useState(event.community_id || null);
   const [registrationLink, setRegistrationLink] = useState(event.registration_link || "");
