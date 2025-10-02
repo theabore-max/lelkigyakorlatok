@@ -55,21 +55,21 @@ export default function EventList({ user }) {
  //   if (filter !== "Mindenki" && event.target_group !== filter) return false;
  //   return true;
   });
-const filteredEvents = events.filter((ev) => {
-  const matchesSearch =
-    filter === "" ||
-    ev.name?.toLowerCase().includes(filter.toLowerCase()) ||
-    ev.description?.toLowerCase().includes(filter.toLowerCase());
+//const filteredEvents = events.filter((ev) => {
+ // const matchesSearch =
+  //  filter === "" ||
+  //  ev.name?.toLowerCase().includes(filter.toLowerCase()) ||
+  //  ev.description?.toLowerCase().includes(filter.toLowerCase());
 
-  const matchesAudience =
-    targetAudience === ""
-      ? true
-      : targetAudience === "myEvents"
-      ? user && ev.created_by === user.id
-      : ev.target_audience === targetAudience;
+ // const matchesAudience =
+  //  targetAudience === ""
+   //   ? true
+  //    : targetAudience === "myEvents"
+  //    ? user && ev.created_by === user.id
+  //    : ev.target_audience === targetAudience;
 
-  return matchesSearch && matchesAudience;
-});
+ // return matchesSearch && matchesAudience;
+//});
 
   const paginatedEvents = filteredEvents.slice(
     page * pageSize,
