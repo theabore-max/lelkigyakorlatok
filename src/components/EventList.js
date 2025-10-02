@@ -102,18 +102,21 @@ export default function EventList({ user }) {
                 {group}
               </button>
             ))}
-			 {/* Új gomb a saját eseményekhez */}
-			<button
-			key="myEvents"
-			className={`btn btn-outline-primary mb-2 ${filter === "myEvents" ? "active" : ""}`}
-			onClick={() => {
-			setFilter("myEvents");
-			setPage(0);
-             setSelectedEvent(null);
-            }}
+			  {/* Új gomb a saját eseményekhez */}
+  {user && (
+    <button
+      className={`btn btn-outline-success mt-3 ${
+        filter === "sajat" ? "active" : ""
+      }`}
+      onClick={() => {
+        setFilter("sajat");
+        setPage(0);
+        setSelectedEvent(null);
+      }}
     >
       Saját eseményeim
     </button>
+  )}
           </div>
         </div>
 
