@@ -1,0 +1,145 @@
+[
+  {
+    "feedTitle": "Életrendezés Háza",
+    "url": "https://eletrendezeshaza.hu/?feed=atom",
+    "total": 10,
+    "withStart": 8,
+    "withEnd": 4,
+    "rateStartPct": 80,
+    "rateEndPct": 40,
+    "sample": [
+      {
+        "title": "Szemlélődő lelkigyakorlat labirintusjárással",
+        "start_date": "2025-10-05T22:00:00.000Z",
+        "end_date": "2025-10-10T21:59:00.000Z",
+        "location": "Püspökszentlászló",
+        "contact": "eletrendezes@jezsuita.hu, 06-30-338-5784",
+        "registration_link": "https://forms.gle/AZY7xvdPQNLdEZkw8",
+        "link": "https://eletrendezeshaza.hu/?p=3696&utm_source=rss&utm_medium=rss&utm_campaign=szemlelodo-lelkigyakorlat-labirintusjarassal"
+      },
+      {
+        "title": "Szemlélődő, meditációs lelkigyakorlat",
+        "start_date": "2025-10-15T22:00:00.000Z",
+        "end_date": null,
+        "location": null,
+        "contact": "eletrendezes@jezsuita.hu, 06-30-338-5784",
+        "registration_link": "http://eletrendezeshaza.hu/wp-content/uploads/2017/09/ima.jpg",
+        "link": "https://eletrendezeshaza.hu/?p=1866&utm_source=rss&utm_medium=rss&utm_campaign=szemlelodo-meditacios-lelkigyakorlat-4"
+      },
+      {
+        "title": "7 napos személyesen kísért lelkigyakorlat fiataloknak",
+        "start_date": "2025-10-26T23:00:00.000Z",
+        "end_date": null,
+        "location": null,
+        "contact": "eletrendezes@jezsuita.hu, 06-30-338-5784",
+        "registration_link": "https://eletrendezeshaza.hu/wp-includes/js/tinymce/plugins/wordpress/img/trans.gif",
+        "link": "https://eletrendezeshaza.hu/?p=3564&utm_source=rss&utm_medium=rss&utm_campaign=szemelyesen-kisert-8-napos-szent-ignac-i-lelkigyakorlat"
+      },
+      {
+        "title": "Személyesen kísért 3 napos Szent Ignác-i lelkigyakorlat",
+        "start_date": "2025-11-05T23:00:00.000Z",
+        "end_date": "2025-11-09T22:59:00.000Z",
+        "location": null,
+        "contact": "eletrendezes@jezsuita.hu, 06-30-338-5784",
+        "registration_link": "https://eletrendezeshaza.hu/wp-includes/js/tinymce/plugins/wordpress/img/trans.gif",
+        "link": "https://eletrendezeshaza.hu/?p=3558&utm_source=rss&utm_medium=rss&utm_campaign=szemelyesen-kisert-3-napos-szent-ignac-i-lelkigyakorlat-5"
+      },
+      {
+        "title": "Személyesen kísért 3 napos Szent Ignác-i lelkigyakorlat",
+        "start_date": "2025-11-26T23:00:00.000Z",
+        "end_date": "2025-11-30T22:59:00.000Z",
+        "location": null,
+        "contact": "eletrendezes@jezsuita.hu, 06-30-338-5784",
+        "registration_link": "https://eletrendezeshaza.hu/wp-includes/js/tinymce/plugins/wordpress/img/trans.gif",
+        "link": "https://eletrendezeshaza.hu/?p=3673&utm_source=rss&utm_medium=rss&utm_campaign=szemelyesen-kisert-3-napos-szent-ignac-i-lelkigyakorlat-7"
+      }
+    ],
+    "missingStartTitles": [
+      "BÚCSÚZÁS ÉS KÖSZÖNTÉS",
+      "Hess István SJ"
+    ]
+  },
+  {
+    "feedTitle": "MaranaTha ház",
+    "url": "https://www.maranathahaz.hu/feed/",
+    "total": 1,
+    "withStart": 1,
+    "withEnd": 1,
+    "rateStartPct": 100,
+    "rateEndPct": 100,
+    "sample": [
+      {
+        "title": "Jézusi gyaloglás lelkigyakorlat 2025. augusztus 6-10.",
+        "start_date": "2025-08-05T22:00:00.000Z",
+        "end_date": "2025-08-10T21:59:00.000Z",
+        "location": "Mánfa",
+        "contact": null,
+        "registration_link": "https://www.maranathahaz.hu/jezusi-gyaloglas-lelkigyakorlat-2024-augusztus-6-10/",
+        "link": "https://www.maranathahaz.hu/jezusi-gyaloglas-lelkigyakorlat-2024-augusztus-6-10/"
+      }
+    ],
+    "missingStartTitles": []
+  },
+  {
+    "feedTitle": "https://martineum.hu/feed/",
+    "url": "https://martineum.hu/feed/",
+    "total": 8,
+    "withStart": 4,
+    "withEnd": 3,
+    "rateStartPct": 50,
+    "rateEndPct": 38,
+    "sample": [
+      {
+        "title": "Margaritha Valappila nővér és Manfred Huber atya lelkigyakorlata",
+        "start_date": null,
+        "end_date": null,
+        "location": "Szombathely",
+        "contact": null,
+        "registration_link": "https://martineum.hu/margaritha-valappila-nover-es-manfred-huber-atya-lelkigyakorlata/",
+        "link": "https://martineum.hu/margaritha-valappila-nover-es-manfred-huber-atya-lelkigyakorlata/"
+      },
+      {
+        "title": "Adventi lelkigyakorlat felnőtteknek",
+        "start_date": "2025-12-05T18:00:00.000Z",
+        "end_date": "2025-12-07T14:00:00.000Z",
+        "location": "Martineum Felnőttképző Akadémia, Szombathely",
+        "contact": null,
+        "registration_link": "https://martineum.hu/adventi-lelkigyakorlat-felnotteknek/",
+        "link": "https://martineum.hu/adventi-lelkigyakorlat-felnotteknek/"
+      },
+      {
+        "title": "VAN IDŐM RÁD – Anyák és fiúk hétvégéje kapcsolatuk erősítéséért",
+        "start_date": "2025-10-02T22:00:00.000Z",
+        "end_date": "2025-10-05T21:59:00.000Z",
+        "location": "Martineum Felnőttképző Akadémia, Szombathely",
+        "contact": "markovits@martineum.hu",
+        "registration_link": "https://martineum.hu/van-idom-rad-anyak-es-fiuk-hetvegeje-kapcsolatuk-erositeseert/",
+        "link": "https://martineum.hu/van-idom-rad-anyak-es-fiuk-hetvegeje-kapcsolatuk-erositeseert/"
+      },
+      {
+        "title": "VAN IDŐM RÁD – Apák és lányok hétvégéje kapcsolatuk erősítéséért",
+        "start_date": "2025-11-06T23:00:00.000Z",
+        "end_date": "2025-11-09T22:59:00.000Z",
+        "location": "Martineum Felnőttképző Akadémia, Szombathely",
+        "contact": "markovits@martineum.hu",
+        "registration_link": "https://martineum.hu/van-idom-rad-apak-es-lanyok-hetvegeje-kapcsolatuk-erositeseert/",
+        "link": "https://martineum.hu/van-idom-rad-apak-es-lanyok-hetvegeje-kapcsolatuk-erositeseert/"
+      },
+      {
+        "title": "Személyesen kísért szentignáci lelkigyakorlat",
+        "start_date": "2025-10-21T22:00:00.000Z",
+        "end_date": null,
+        "location": null,
+        "contact": null,
+        "registration_link": "https://martineum.hu/szemelyesen-kisert-szentignaci-lelkigyakorlat/",
+        "link": "https://martineum.hu/szemelyesen-kisert-szentignaci-lelkigyakorlat/"
+      }
+    ],
+    "missingStartTitles": [
+      "Margaritha Valappila nővér és Manfred Huber atya lelkigyakorlata",
+      "Ciklus show foglalkozás",
+      "Gyászfeldolgozó csoport és egyéni konzultáció",
+      "Vendégbaba csoport indul Szombathelyen"
+    ]
+  }
+]
