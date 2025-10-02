@@ -1,7 +1,7 @@
 // src/components/EditEventForm.js
 import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
-import editEventImage from "./assets/edit-event.jpg";
+import editEventImage from "../assets/edit-event.jpg";
 
 export default function EditEventForm({ event, onCancel, onSuccess }) {
   // Helper: ISO -> datetime-local
