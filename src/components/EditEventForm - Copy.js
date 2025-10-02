@@ -1,92 +1,65 @@
 // src/components/EditEventForm.js
 import React, { useState, useEffect } from "react";
-import { supabase } from "./supabaseClient";
-import editEventImage from "./assets/edit-event.jpg";
+import { supabase } from "../supabaseClient";
+import editEventImage from "../assets/edit-event.jpg";
 
 export default function EditEventForm({ event, onCancel, onSuccess }) {
-  // Helper: ISO -> datetime-local
-  const toLocalInput = (val) => {
-    if (!val) return "";
-    const d = new Date(val);
-    const pad = (n) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-      d.getHours()
-    )}:${pad(d.getMinutes())}`;
-  };
-
-  // Alap állapotok
   const [title, setTitle] = useState(event.title || "");
   const [description, setDescription] = useState(event.description || "");
   const [targetGroup, setTargetGroup] = useState(event.target_group || "");
-  const [startDate, setStartDate] = useState(toLocalInput(event.start_date));
-  const [endDate, setEndDate] = useState(toLocalInput(event.end_date));
+ // const [startDate, setStartDate] = useState(event.start_date || "");
+//  const [endDate, setEndDate] = useState(event.end_date || "");
   const [contact, setContact] = useState(event.contact || "");
-  const [communityId, setCommunityId] = useState(""); // mindig string
-  const [registrationLink, setRegistrationLink] = useState(
-    event.registration_link || ""
-  );
-
+const [communityId, setCommunityId] = useState("");
+const [saving, setSaving] = useState(false);
+  const [registrationLink, setRegistrationLink] = useState(event.registration_link || "");
   const [communities, setCommunities] = useState([]);
-  const [error, setError] = useState(null);
-  const [saving, setSaving] = useState(false);
-
-  // A közösség előválasztása: community_id vagy a join-olt communities.id
-  useEffect(() => {
-    const initial = event?.community_id ?? event?.communities?.id ?? "";
-    setCommunityId(initial ? String(initial) : "");
-  }, [event]);
+  const [error, setError] = useState(null);  
+  const toLocalInput = (val) => {
+  if (!val) return "";
+  const d = new Date(val);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+const [startDate, setStartDate] = useState(toLocalInput(event.start_date));
+const [endDate, setEndDate] = useState(toLocalInput(event.end_date));
 
   // Közösségek betöltése
   useEffect(() => {
     const fetchCommunities = async () => {
       const { data, error } = await supabase.from("communities").select("*");
-      if (!error && Array.isArray(data)) setCommunities(data);
+      if (!error) setCommunities(data);
     };
     fetchCommunities();
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
-    setSaving(true);
 
-    try {
-      const payload = {
-        title,
-        description,
-        target_group: targetGroup,
-        // datetime-local -> ISO
-        start_date: startDate ? new Date(startDate).toISOString() : null,
-        end_date: endDate ? new Date(endDate).toISOString() : null,
-        contact,
-        community_id: communityId ? Number(communityId) : null,
-        registration_link: registrationLink,
-      };
+    const { data, error } = await supabase
+    .from("events")
+    .update({
+      title,
+      description,
+      target_group: targetGroup,
+      start_date: startDate,
+      end_date: endDate,
+      contact,
+      community_id: communityId,
+      registration_link: registrationLink,
+    })
+    .eq("id", event.id)
+    .select("id"); // <- fontos: így tudjuk, volt-e tényleges update
 
-      const { data, error } = await supabase
-        .from("events")
-        .update(payload)
-        .eq("id", event.id)
-        .select("id")
-        .single();
+  if (error) {
+    setError(error.message);
+    return;
+  }
 
-      if (error) {
-        setError(error.message);
-        return;
-      }
-
-      if (!data) {
-        setError(
-          "A frissítés nem hajtódott végre (0 sor). Lehet, hogy nincs jogosultságod."
-        );
-        return;
-      }
-
-      // Siker: a szülő bezárja a modalt és frissíti a listát
-      onSuccess && onSuccess();
-    } finally {
-      setSaving(false);
-    }
+  if (!data || data.length === 0) {
+    setError("Nem találtam frissíthető rekordot (id nem egyezik?).");
+    return;
+  }
   };
 
   return (
@@ -183,14 +156,14 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
             <div className="mb-3">
               <label className="form-label">Szervező közösség *</label>
               <select
-                className="form-select"
-                value={communityId}
-                onChange={(e) => setCommunityId(e.target.value)}
-                required
-              >
+			  className="form-select"
+			  value={communityId ?? ""}
+			  onChange={(e) => setCommunityId(e.target.value ? Number(e.target.value) : null)}
+			  required
+				>
                 <option value="">Válassz közösséget</option>
                 {communities.map((c) => (
-                  <option key={c.id} value={String(c.id)}>
+                  <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
                 ))}
@@ -209,16 +182,16 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
             </div>
 
             <div className="d-flex justify-content-between">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => onCancel && onCancel()}
-              >
-                Mégsem
-              </button>
+				<button
+				  type="button"
+				  className="btn btn-secondary"
+				  onClick={() => onCancel && onCancel()}
+				>
+				  Mégsem
+				</button>
               <button type="submit" className="btn btn-primary" disabled={saving}>
-                {saving ? "Mentés folyamatban..." : "Mentés"}
-              </button>
+				{saving ? "Mentés folyamatban..." : "Mentés"}
+				</button>
             </div>
           </form>
         </div>
