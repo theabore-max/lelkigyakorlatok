@@ -51,25 +51,10 @@ export default function EventList({ user }) {
     else setEvents(data);
   }
 
-  //const filteredEvents = events.filter((event) => {
- //   if (filter !== "Mindenki" && event.target_group !== filter) return false;
- //   return true;
+  const filteredEvents = events.filter((event) => {
+    if (filter !== "Mindenki" && event.target_group !== filter) return false;
+    return true;
   });
-const filteredEvents = events.filter((ev) => {
-  const matchesSearch =
-    filter === "" ||
-    ev.name?.toLowerCase().includes(filter.toLowerCase()) ||
-    ev.description?.toLowerCase().includes(filter.toLowerCase());
-
-  const matchesAudience =
-    targetAudience === ""
-      ? true
-      : targetAudience === "myEvents"
-      ? user && ev.created_by === user.id
-      : ev.target_audience === targetAudience;
-
-  return matchesSearch && matchesAudience;
-});
 
   const paginatedEvents = filteredEvents.slice(
     page * pageSize,
