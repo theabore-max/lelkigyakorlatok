@@ -40,7 +40,7 @@ export default function EventList({ user }) {
 	registration_link,    
     target_group,
     communities (id, name),
-	location
+	created_by
   `)
   .gte("start_date", new Date().toISOString()) // csak jövőbeli események
   .order("start_date", { ascending: true });
@@ -63,6 +63,7 @@ const filteredEvents = events.filter((event) => {
   if (filter !== "Mindenki" && event.target_group !== filter) return false;
   return true;
 });
+
 
 
   const paginatedEvents = filteredEvents.slice(
