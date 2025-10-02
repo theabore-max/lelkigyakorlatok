@@ -14,6 +14,14 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
   const [registrationLink, setRegistrationLink] = useState(event.registration_link || "");
   const [communities, setCommunities] = useState([]);
   const [error, setError] = useState(null);
+  const toLocalInput = (val) => {
+  if (!val) return "";
+  const d = new Date(val);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+const [startDate, setStartDate] = useState(toLocalInput(event.start_date));
+const [endDate, setEndDate] = useState(toLocalInput(event.end_date));
 
   // Közösségek betöltése
   useEffect(() => {
@@ -147,11 +155,11 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
             <div className="mb-3">
               <label className="form-label">Szervező közösség *</label>
               <select
-                className="form-select"
-                value={communityId || ""}
-                onChange={(e) => setCommunityId(e.target.value)}
-                required
-              >
+			  className="form-select"
+			  value={communityId ?? ""}
+			  onChange={(e) => setCommunityId(e.target.value ? Number(e.target.value) : null)}
+			  required
+				>
                 <option value="">Válassz közösséget</option>
                 {communities.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -173,13 +181,13 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
             </div>
 
             <div className="d-flex justify-content-between">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={onCancel}
-              >
-                Mégsem
-              </button>
+				<button
+				  type="button"
+				  className="btn btn-secondary"
+				  onClick={() => onCancel && onCancel()}
+				>
+				  Mégsem
+				</button>
               <button type="submit" className="btn btn-primary">
                 Mentés
               </button>
