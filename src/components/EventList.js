@@ -257,6 +257,27 @@ const filteredEvents = events.filter((event) => {
 </Modal.Footer>
         </Modal>
       )}
+	  
+	  {/* Modal az esemény szerkesztéséhez */}
+{editEvent && (
+  <Modal
+    show={true}
+    onHide={() => setEditEvent(null)}
+    centered
+    size="lg"
+  >
+    <Modal.Header closeButton>
+      <Modal.Title>Esemény szerkesztése</Modal.Title>
+    </Modal.Header>
+    <Modal.Body>
+      <EditEventForm
+        event={editEvent}
+        user={user}
+        onClose={() => setEditEvent(null)}
+      />
+    </Modal.Body>
+  </Modal>
+)}
     </div>
   );
 }
