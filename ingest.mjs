@@ -33,7 +33,6 @@ const FEEDS = [
   "https://www.maranathahaz.hu/feed/",
   "https://martineum.hu/feed/",
 ];
-
 const BIZ_CATEGORY = "https://bizdramagad.hu/hitelet/lelkigyakorlat/";
 
 const AXIOS = axios.create({
@@ -396,88 +395,3 @@ export async function runIngest({
 
 export default runIngest;
 
-
-// ---------- DEDUP + UPSERT ----------
-function prepareRows(rows) {
-  return rows
-    .filter((r) => r.title && r.start_date)
-    .map((r) => {
-      const key = buildUniquenessKey(r);
-      return {
-        ...r,
-        title: r.title.slice(0, 255),
-        location: r.location ? r.location.slice(0, 255) : null,
-        contact: r.contact ? r.contact.slice(0, 255) : null,
-        registration_link: r.registration_link ? r.registration_link.slice(0, 1024) : null,
-        organizer: r.organizer ? r.organizer.slice(0, 255) : null,
-        source: r.source || null,
-        source_url: r.source_url || null,
-        uniqueness_key: key,
-      };
-    });
-}
-
-async function upsertByUniqKey(rows) {
-  const chunkSize = 200;
-  let written = 0;
-  for (let i = 0; i < rows.length; i += chunkSize) {
-    const chunk = rows.slice(i, i + chunkSize);
-    const { data, error } = await supabase
-      .from("events")
-      .upsert(chunk, { onConflict: "uniqueness_key", ignoreDuplicates: false })
-      .select("id");
-    if (error) throw error;
-    written += data?.length || 0;
-  }
-  return written;
-}
-
-// ---------- FŐ FUTTATÓ ----------
-export async function runIngest({
-  dry = false,
-  src = "all",             // "rss" | "biz" | "all"
-  limit = 40,              // Bizdrámagad: ennyi program-oldalt dolgozzon fel
-  rssLimitPerFeed = 100,   // RSS: feedenként ennyi item
-} = {}) {
-  const doRSS = src === "rss" || src === "all";
-  const doBIZ = src === "biz" || src === "all";
-
-  const rssRows = doRSS ? await importFromRSS({ rssLimitPerFeed }) : [];
-  const bizRows = doBIZ ? await importFromBizdramagad({ limit }) : [];
-
-  const prepared = prepareRows([...rssRows, ...bizRows]);
-
-  // memóriabeli duplikáció
-  const seen = new Set();
-  const unique = [];
-  for (const r of prepared) {
-    if (seen.has(r.uniqueness_key)) continue;
-    seen.add(r.uniqueness_key);
-    unique.push(r);
-  }
-
-  if (dry) {
-    return {
-      dry: true,
-      src,
-      rssCount: rssRows.length,
-      bizCount: bizRows.length,
-      prepared: prepared.length,
-      unique: unique.length,
-      sample: unique.slice(0, 5),
-    };
-  }
-
-  const written = await upsertByUniqKey(unique);
-  return {
-    dry: false,
-    src,
-    rssCount: rssRows.length,
-    bizCount: bizRows.length,
-    prepared: prepared.length,
-    unique: unique.length,
-    written,
-  };
-}
-
-export default runIngest;
