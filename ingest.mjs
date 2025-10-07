@@ -9,17 +9,23 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+
+// ---------- SEGÉD: abszolút URL ----------
 function absUrl(href, base) {
   try { return new URL(href, base).toString(); }
   catch { return null; }
 }
 
-// ---------- ENV / SUPABASE ----------
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  { auth: { persistSession: false } }
-);
+// ---------- ENV / SUPABASE (lustán) ----------
+let _sb = null;
+function getSupabase() {
+  if (_sb) return _sb;
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  _sb = createClient(url, key, { auth: { persistSession: false } });
+  return _sb;
+}
 
 // ---------- BEÁLLÍTÁSOK ----------
 const FEEDS = [
@@ -99,7 +105,7 @@ function mapHUTimeWord(word) {
 function parseHUDateRange(textRaw = "") {
   const months = Object.keys(HU_MONTHS).join("|");
 
-  // Időpont: 2025. október 16. (… vacsorától) – október 26. (… reggeliig)
+  // Időpont: 2025. október 16. (…) – október 26. (…)
   const reDetail = new RegExp(
     String.raw`időpont[^:]*:\s*(\d{4})\.\s*(${months})\.?\s*(\d{1,2})\.?\s*(?:\(([^)]+)\))?\s*(?:(\d{1,2})(?::(\d{2}))?\s*órától)?\s*[–—-]\s*(?:(\d{4})\.\s*)?(?:(${months})\.?\s*)?(\d{1,2})\.?\s*(?:\(([^)]+)\))?\s*(?:(\d{1,2})(?::(\d{2}))?\s*óráig)?`,
     "i"
@@ -142,7 +148,6 @@ function parseHUDateRange(textRaw = "") {
     const mm = HU_MONTHS[mon.toLowerCase()];
     return { startISO: toISO(y, mm, d), endISO: null };
   }
-
   return { startISO: null, endISO: null };
 }
 
@@ -204,21 +209,19 @@ async function importFromRSS({ rssLimitPerFeed = Infinity } = {}) {
 
 // ---------- Bizdrámagad ----------
 async function getHtml(url) {
+  if (!/^https?:\/\//i.test(url)) throw new Error(`Invalid absolute URL: ${url}`);
   const r = await AXIOS.get(url);
   return r.data;
 }
 
-async function collectProgramLinks(solutionUrl) {
-  const $ = cheerio.load(await getHtml(solutionUrl));
+async function collectSolutionLinks() {
+  const base = BIZ_CATEGORY;
+  const $ = cheerio.load(await getHtml(base));
   const links = new Set();
   $("a[href]").each((_, a) => {
     const raw = $(a).attr("href");
-    if (!raw) return;
-    const href = absUrl(raw, solutionUrl);  // ← ABSZOLÚT
-    if (!href) return;
-    if (/^https?:\/\/.+\/programajanlo\//.test(href)) {
-      links.add(href.split("#")[0]);
-    }
+    const href = raw ? absUrl(raw, base) : null;     // abszolutizálás
+    if (href && /\/megoldasok\//.test(href)) links.add(href.split("#")[0]);
   });
   return [...links];
 }
@@ -227,7 +230,8 @@ async function collectProgramLinks(solutionUrl) {
   const $ = cheerio.load(await getHtml(solutionUrl));
   const links = new Set();
   $("a[href]").each((_, a) => {
-    const href = $(a).attr("href");
+    const raw = $(a).attr("href");
+    const href = raw ? absUrl(raw, solutionUrl) : null;  // abszolutizálás
     if (href && /\/programajanlo\//.test(href)) links.add(href.split("#")[0]);
   });
   return [...links];
@@ -243,7 +247,6 @@ async function parseProgram(programUrl) {
   const pageText = $("body").text().replace(/\s+/g, " ");
   const { startISO, endISO } = parseDateRangeFromPageText(pageText);
 
-  // mezők címkékből
   const field = (label) => {
     const re = new RegExp(`${label}\\s*:\\s*([^\\n]+)`, "i");
     return (pageText.match(re)?.[1] || "").trim() || null;
@@ -253,15 +256,15 @@ async function parseProgram(programUrl) {
   const registration_deadline = field("Jelentkezési határidő");
 
   // reg link preferáltan űrlap
-    let registration_link = null;
+  let registration_link = null;
   $("a[href]").each((_, a) => {
     const raw = $(a).attr("href");
     if (!raw) return;
-    const href = absUrl(raw, programUrl);   // abszolutizálás a program oldal URL-jéhez képest
+    const href = absUrl(raw, programUrl);
     if (!href) return;
     if (/forms\.gle|form|jelentkez/i.test(href)) {
       registration_link = href;
-      return false; // első releváns link elég
+      return false;
     }
   });
   if (!registration_link) registration_link = programUrl;
@@ -293,7 +296,6 @@ async function importFromBizdramagad({ limit = Infinity } = {}) {
     links.forEach((l) => programLinks.add(l));
   }
 
-  // limitáljuk a feldolgozást, hogy ne fussunk ki az időből
   const list = Array.from(programLinks).slice(0, limit);
 
   const rows = [];
@@ -302,12 +304,98 @@ async function importFromBizdramagad({ limit = Infinity } = {}) {
       const row = await parseProgram(url);
       if (row.title && row.start_date) rows.push(row);
     } catch (e) {
-      // swallow & continue
-      // console.error("Program parse error:", url, e?.message);
+      // haladjunk tovább
     }
   }
   return rows;
 }
+
+// ---------- DEDUP + UPSERT ----------
+function prepareRows(rows) {
+  return rows
+    .filter((r) => r.title && r.start_date)
+    .map((r) => {
+      const key = buildUniquenessKey(r);
+      return {
+        ...r,
+        title: r.title.slice(0, 255),
+        location: r.location ? r.location.slice(0, 255) : null,
+        contact: r.contact ? r.contact.slice(0, 255) : null,
+        registration_link: r.registration_link ? r.registration_link.slice(0, 1024) : null,
+        organizer: r.organizer ? r.organizer.slice(0, 255) : null,
+        source: r.source || null,
+        source_url: r.source_url || null,
+        uniqueness_key: key,
+      };
+    });
+}
+
+async function upsertByUniqKey(rows) {
+  const supabase = getSupabase();
+  const chunkSize = 200;
+  let written = 0;
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = rows.slice(i, i + chunkSize);
+    const { data, error } = await supabase
+      .from("events")
+      .upsert(chunk, { onConflict: "uniqueness_key", ignoreDuplicates: false })
+      .select("id");
+    if (error) throw error;
+    written += data?.length || 0;
+  }
+  return written;
+}
+
+// ---------- FŐ FUTTATÓ ----------
+export async function runIngest({
+  dry = false,
+  src = "all",             // "rss" | "biz" | "all"
+  limit = 40,              // Bizdrámagad: ennyi program-oldalt dolgozzon fel
+  rssLimitPerFeed = 100,   // RSS: feedenként ennyi item
+} = {}) {
+  const doRSS = src === "rss" || src === "all";
+  const doBIZ = src === "biz" || src === "all";
+
+  const rssRows = doRSS ? await importFromRSS({ rssLimitPerFeed }) : [];
+  const bizRows = doBIZ ? await importFromBizdramagad({ limit }) : [];
+
+  const prepared = prepareRows([...rssRows, ...bizRows]);
+
+  // memóriabeli duplikáció
+  const seen = new Set();
+  const unique = [];
+  for (const r of prepared) {
+    if (seen.has(r.uniqueness_key)) continue;
+    seen.add(r.uniqueness_key);
+    unique.push(r);
+  }
+
+  if (dry) {
+    return {
+      dry: true,
+      src,
+      rssCount: rssRows.length,
+      bizCount: bizRows.length,
+      prepared: prepared.length,
+      unique: unique.length,
+      sample: unique.slice(0, 5),
+    };
+  }
+
+  const written = await upsertByUniqKey(unique);
+  return {
+    dry: false,
+    src,
+    rssCount: rssRows.length,
+    bizCount: bizRows.length,
+    prepared: prepared.length,
+    unique: unique.length,
+    written,
+  };
+}
+
+export default runIngest;
+
 
 // ---------- DEDUP + UPSERT ----------
 function prepareRows(rows) {
