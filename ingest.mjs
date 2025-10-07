@@ -311,6 +311,14 @@ async function importFromBizdramagad({ limit = Infinity } = {}) {
 
 // ---------- DEDUP + UPSERT ----------
 function prepareRows(rows) {
+  const seen = new Set();
+  const unique = [];
+  for (const r of prepared) {
+   const h = r.uniqueness_key_hash;             // ← HASH
+   if (seen.has(h)) continue;
+   seen.add(h);
+   unique.push(r);
+}
   return rows
     .filter((r) => r.title && r.start_date)
     .map((r) => {
@@ -324,21 +332,27 @@ function prepareRows(rows) {
         organizer: r.organizer ? r.organizer.slice(0, 255) : null,
         source: r.source || null,
         source_url: r.source_url || null,
-        uniqueness_key: key,
+        uniqueness_key: key,                    // megőrizzük olvasható formában
+        uniqueness_key_hash: keyHash,           // ← ÚJ (ezt indexeljük)
       };
     });
 }
 
 async function upsertByUniqKey(rows) {
-  const supabase = getSupabase();
+   const supabase = getSupabase();
   const chunkSize = 200;
   let written = 0;
+
   for (let i = 0; i < rows.length; i += chunkSize) {
     const chunk = rows.slice(i, i + chunkSize);
     const { data, error } = await supabase
       .from("events")
-      .upsert(chunk, { onConflict: "uniqueness_key", ignoreDuplicates: false })
+      .upsert(chunk, {
+        onConflict: "uniqueness_key_hash",      // ← ITT A VÁLTOZÁS
+        ignoreDuplicates: false,
+      })
       .select("id");
+
     if (error) throw error;
     written += data?.length || 0;
   }
