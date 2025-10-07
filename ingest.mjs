@@ -9,6 +9,10 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+function absUrl(href, base) {
+  try { return new URL(href, base).toString(); }
+  catch { return null; }
+}
 
 // ---------- ENV / SUPABASE ----------
 const supabase = createClient(
@@ -204,12 +208,17 @@ async function getHtml(url) {
   return r.data;
 }
 
-async function collectSolutionLinks() {
-  const $ = cheerio.load(await getHtml(BIZ_CATEGORY));
+async function collectProgramLinks(solutionUrl) {
+  const $ = cheerio.load(await getHtml(solutionUrl));
   const links = new Set();
   $("a[href]").each((_, a) => {
-    const href = $(a).attr("href");
-    if (href && /\/megoldasok\//.test(href)) links.add(href.split("#")[0]);
+    const raw = $(a).attr("href");
+    if (!raw) return;
+    const href = absUrl(raw, solutionUrl);  // ← ABSZOLÚT
+    if (!href) return;
+    if (/^https?:\/\/.+\/programajanlo\//.test(href)) {
+      links.add(href.split("#")[0]);
+    }
   });
   return [...links];
 }
@@ -244,11 +253,16 @@ async function parseProgram(programUrl) {
   const registration_deadline = field("Jelentkezési határidő");
 
   // reg link preferáltan űrlap
-  let registration_link = null;
+    let registration_link = null;
   $("a[href]").each((_, a) => {
-    const href = $(a).attr("href");
+    const raw = $(a).attr("href");
+    if (!raw) return;
+    const href = absUrl(raw, programUrl);   // abszolutizálás a program oldal URL-jéhez képest
     if (!href) return;
-    if (/forms\.gle|form|jelentkez/i.test(href)) { registration_link = href; return false; }
+    if (/forms\.gle|form|jelentkez/i.test(href)) {
+      registration_link = href;
+      return false; // első releváns link elég
+    }
   });
   if (!registration_link) registration_link = programUrl;
 
