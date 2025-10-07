@@ -1,8 +1,8 @@
 // ingest.mjs
 // Hibrid import: RSS + Bizdrámagad scraper → Supabase `events`
 // - Duplikáció kulcs: normalize(title) | YYYY-MM-DD(start) | normalize(organizer || location)
-// - Limitálható: { limit, rssLimitPerFeed } opciókkal
-// - ESM modul
+// - Hash-alapú egyediség: uniqueness_key_hash = sha1(uniqueness_key)
+// - Limitálható: { limit, rssLimitPerFeed }
 
 import Parser from "rss-parser";
 import axios from "axios";
@@ -10,13 +10,13 @@ import * as cheerio from "cheerio";
 import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
-// ---------- SEGÉD: abszolút URL ----------
+// ---------- segéd: abszolút URL ----------
 function absUrl(href, base) {
   try { return new URL(href, base).toString(); }
   catch { return null; }
 }
 
-// ---------- ENV / SUPABASE (lustán) ----------
+// ---------- Supabase (lustán) ----------
 let _sb = null;
 function getSupabase() {
   if (_sb) return _sb;
@@ -27,7 +27,7 @@ function getSupabase() {
   return _sb;
 }
 
-// ---------- BEÁLLÍTÁSOK ----------
+// ---------- beállítások ----------
 const FEEDS = [
   "https://eletrendezeshaza.hu/?feed=atom",
   "https://www.maranathahaz.hu/feed/",
@@ -40,7 +40,7 @@ const AXIOS = axios.create({
   headers: { "User-Agent": "RetreatCrawler/1.0 (+contact: you@example.com)" },
 });
 
-// ---------- SEGÉDEK ----------
+// ---------- segédek ----------
 const HU_MONTHS = {
   január: 1, jan: 1, "jan.": 1,
   február: 2, feb: 2, "feb.": 2,
@@ -219,7 +219,7 @@ async function collectSolutionLinks() {
   const links = new Set();
   $("a[href]").each((_, a) => {
     const raw = $(a).attr("href");
-    const href = raw ? absUrl(raw, base) : null;     // abszolutizálás
+    const href = raw ? absUrl(raw, base) : null;
     if (href && /\/megoldasok\//.test(href)) links.add(href.split("#")[0]);
   });
   return [...links];
@@ -230,7 +230,7 @@ async function collectProgramLinks(solutionUrl) {
   const links = new Set();
   $("a[href]").each((_, a) => {
     const raw = $(a).attr("href");
-    const href = raw ? absUrl(raw, solutionUrl) : null;  // abszolutizálás
+    const href = raw ? absUrl(raw, solutionUrl) : null;
     if (href && /\/programajanlo\//.test(href)) links.add(href.split("#")[0]);
   });
   return [...links];
@@ -311,18 +311,11 @@ async function importFromBizdramagad({ limit = Infinity } = {}) {
 
 // ---------- DEDUP + UPSERT ----------
 function prepareRows(rows) {
-  const seen = new Set();
-  const unique = [];
-  for (const r of prepared) {
-   const h = r.uniqueness_key_hash;             // ← HASH
-   if (seen.has(h)) continue;
-   seen.add(h);
-   unique.push(r);
-}
   return rows
     .filter((r) => r.title && r.start_date)
     .map((r) => {
       const key = buildUniquenessKey(r);
+      const keyHash = sha1(key);
       return {
         ...r,
         title: r.title.slice(0, 255),
@@ -332,34 +325,29 @@ function prepareRows(rows) {
         organizer: r.organizer ? r.organizer.slice(0, 255) : null,
         source: r.source || null,
         source_url: r.source_url || null,
-        uniqueness_key: key,                    // megőrizzük olvasható formában
-        uniqueness_key_hash: keyHash,           // ← ÚJ (ezt indexeljük)
+        uniqueness_key: key,          // olvasható kulcs
+        uniqueness_key_hash: keyHash, // ezt indexeljük
       };
     });
 }
 
 async function upsertByUniqKey(rows) {
-   const supabase = getSupabase();
+  const supabase = getSupabase();
   const chunkSize = 200;
   let written = 0;
-
   for (let i = 0; i < rows.length; i += chunkSize) {
     const chunk = rows.slice(i, i + chunkSize);
     const { data, error } = await supabase
       .from("events")
-      .upsert(chunk, {
-        onConflict: "uniqueness_key_hash",      // ← ITT A VÁLTOZÁS
-        ignoreDuplicates: false,
-      })
+      .upsert(chunk, { onConflict: "uniqueness_key_hash", ignoreDuplicates: false })
       .select("id");
-
     if (error) throw error;
     written += data?.length || 0;
   }
   return written;
 }
 
-// ---------- FŐ FUTTATÓ ----------
+// ---------- fő futtató ----------
 export async function runIngest({
   dry = false,
   src = "all",             // "rss" | "biz" | "all"
@@ -374,12 +362,13 @@ export async function runIngest({
 
   const prepared = prepareRows([...rssRows, ...bizRows]);
 
-  // memóriabeli duplikáció
+  // memóriabeli dedup HASH alapján
   const seen = new Set();
   const unique = [];
   for (const r of prepared) {
-    if (seen.has(r.uniqueness_key)) continue;
-    seen.add(r.uniqueness_key);
+    const h = r.uniqueness_key_hash;
+    if (seen.has(h)) continue;
+    seen.add(h);
     unique.push(r);
   }
 
@@ -408,4 +397,3 @@ export async function runIngest({
 }
 
 export default runIngest;
-
