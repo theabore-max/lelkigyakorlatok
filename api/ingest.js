@@ -1,32 +1,33 @@
 // api/ingest.js
 module.exports = async (req, res) => {
   try {
+    // --- auth token (opcionális) ---
     if (process.env.CRON_TOKEN) {
       const token = req.query?.token;
       if (token !== process.env.CRON_TOKEN) {
-        res.statusCode = 401;
-        res.setHeader("Content-Type", "application/json");
-        return res.end(JSON.stringify({ ok: false, error: "unauthorized" }));
+        return res.status(401).json({ ok: false, error: "unauthorized" });
       }
     }
 
     const dry = req.query?.dry === "1";
 
+    console.log("[/api/ingest] start", { dry, ts: new Date().toISOString() });
+
+    // --- ESM modul betöltése a gyökérből ---
     const mod = await import("../ingest.mjs");
+    console.log("[/api/ingest] module exports:", Object.keys(mod));
+
     const runIngest = mod.runIngest || mod.default;
     if (typeof runIngest !== "function") {
-      throw new Error("runIngest export not found");
+      throw new Error("runIngest export not found in ingest.mjs");
     }
 
     const result = await runIngest({ dry });
-    const payload = result ?? { ok: true, note: "empty result" };
+    console.log("[/api/ingest] done", { ts: new Date().toISOString() });
 
-    res.statusCode = 200;
-    res.setHeader("Content-Type", "application/json");
-    return res.end(JSON.stringify(payload));
+    return res.status(200).json(result ?? { ok: true, note: "empty result" });
   } catch (e) {
-    res.statusCode = 500;
-    res.setHeader("Content-Type", "application/json");
-    return res.end(JSON.stringify({ ok: false, error: String(e) }));
+    console.error("[/api/ingest] error", e);
+    return res.status(500).json({ ok: false, error: String(e) });
   }
 };

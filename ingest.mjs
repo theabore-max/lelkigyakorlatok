@@ -1,10 +1,5 @@
-
-
-// ingest.mjs  (a repo GYÖKERÉBEN)
+// ingest.mjs
 export async function runIngest({ dry = false } = {}) {
-  // ... a teljes hibrid import kódod ...
-  // return { dry, rssCount, bizCount, prepared, unique, written };
+  return { dry, rssCount: 0, bizCount: 0, prepared: 0, unique: 0, written: 0 };
 }
-
-// opcionális, de hasznos: default export is
 export default runIngest;

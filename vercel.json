@@ -1,7 +1,8 @@
 {
   "functions": {
     "api/ingest.js": {
-      "includeFiles": "ingest.mjs"
+      "includeFiles": "ingest.mjs",
+      "maxDuration": 60
     }
   }
 }
