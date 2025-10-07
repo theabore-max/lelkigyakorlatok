@@ -4,5 +4,11 @@
       "includeFiles": "ingest.mjs",
       "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/ingest", 
+      "schedule": "0 6 * * *"
+    }
+  ]
 }

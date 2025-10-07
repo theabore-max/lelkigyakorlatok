@@ -1,13 +1,15 @@
 // api/ingest.js
+
+
 module.exports = async (req, res) => {
   try {
-    if (process.env.CRON_TOKEN) {
+    const isCron = req.headers["x-vercel-cron"] === "1";
+    if (process.env.CRON_TOKEN && !isCron) {
       const token = req.query?.token;
       if (token !== process.env.CRON_TOKEN) {
         return res.status(401).json({ ok:false, error:"unauthorized" });
       }
     }
-
     const dry = req.query?.dry === "1";
     const src = req.query?.src || "all"; // rss | biz | all
     const limit = Number.parseInt(req.query?.limit) || undefined;
