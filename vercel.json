@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/ingest.js": {
+      "includeFiles": ["ingest.js"]
+    }
+  }
+}{
+  "functions": {
+    "api/ingest.js": {
+      "includeFiles": ["ingest.mjs"]
+    }
+  }
+}
