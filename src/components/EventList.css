@@ -11,4 +11,8 @@
   .sidebar-sticky {
     position: static;
   }
+  
+  .headerImage{
+    width: 100%;
+  }
 }
