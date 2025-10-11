@@ -5,7 +5,6 @@ import headerImage from "../assets/header.jpg";
 import placeholderImage from "../assets/card_1.jpg"; // placeholder kép
 import { Modal, Button } from "react-bootstrap";
 import EditEventForm from "./EditEventForm";
-import { Modal, Button, Pagination } from "react-bootstrap";
 
 export default function EventList({ user }) {
   const [events, setEvents] = useState([]);
@@ -24,7 +23,7 @@ export default function EventList({ user }) {
     "Tinédzserek",
     "Családok",
   ]);
-  const [pageSize, setPageSize] = useState(9);
+  const pageSize = 9;
 
   useEffect(() => {
     fetchEvents();
@@ -67,73 +66,7 @@ const filteredEvents = events.filter((event) => {
   if (filter !== "Mindenki" && event.target_group !== filter) return false;
   return true;
 });
-const total = filteredEvents.length;
-const totalPages = Math.max(1, Math.ceil(total / pageSize));
-const startIndex = page * pageSize;
-const endIndex = Math.min(startIndex + pageSize, total);
 
-const paginatedEvents = filteredEvents.slice(startIndex, endIndex);
-
-// kis segéd a számozott oldalakhoz (… ellipszisekkel)
-function getVisiblePages() {
-  const max = totalPages - 1;
-  const win = 2; // ennyit látunk a current körül
-  let start = Math.max(0, page - win);
-  let end = Math.min(max, page + win);
-  const items = [];
-  const addPage = (n) => items.push({ type: "page", n });
-  const addDots = (key) => items.push({ type: "dots", key });
-
-  if (start > 0) { addPage(0); if (start > 1) addDots("l"); }
-  for (let n = start; n <= end; n++) addPage(n);
-  if (end < max) { if (end < max - 1) addDots("r"); addPage(max); }
-  return items;
-}
-
-function renderPager() {
-  return (
-    <div className="d-flex align-items-center justify-content-between gap-3 mt-3">
-      <div className="text-muted small">
-        Eredmények: {total === 0 ? 0 : startIndex + 1}–{endIndex} / {total}
-      </div>
-
-      <div className="d-flex align-items-center gap-2">
-        <select
-          className="form-select form-select-sm w-auto"
-          value={pageSize}
-          onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
-        >
-          <option value={9}>9 / oldal</option>
-          <option value={12}>12 / oldal</option>
-          <option value={24}>24 / oldal</option>
-        </select>
-
-        <Pagination className="mb-0">
-          <Pagination.First disabled={page === 0} onClick={() => setPage(0)} />
-          <Pagination.Prev disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))} />
-          {getVisiblePages().map((it, i) =>
-            it.type === "dots" ? (
-              <Pagination.Ellipsis disabled key={`dots-${it.key}-${i}`} />
-            ) : (
-              <Pagination.Item
-                key={it.n}
-                active={it.n === page}
-                onClick={() => setPage(it.n)}
-              >
-                {it.n + 1}
-              </Pagination.Item>
-            )
-          )}
-          <Pagination.Next disabled={page >= totalPages - 1} onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} />
-          <Pagination.Last disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} />
-        </Pagination>
-      </div>
-    </div>
-  );
-}
-useEffect(() => {
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}, [page, pageSize, filter]);
 
 
   const paginatedEvents = filteredEvents.slice(
@@ -164,7 +97,7 @@ useEffect(() => {
 
       <div className="row">
         {/* Bal oldali filterek */}
-        <div className="col-md-3 mb-3" style={{ position: "sticky", top: "1rem", height: "fit-content" }}>
+        <div className="col-md-3 mb-3">
           <strong>Célcsoport:</strong>
           <div className="d-flex flex-column mt-2">
             {targetGroups.map((group) => (
@@ -199,7 +132,7 @@ useEffect(() => {
   )}
           </div>
         </div>
-{renderPager()}
+
         {/* Jobb oldali események */}
         <div className="col-md-9">
           {paginatedEvents.length === 0 && (
@@ -245,8 +178,15 @@ useEffect(() => {
             ))}
           </div>
 
-        {renderPager()}
-          
+          {/* Tovább gomb */}
+          {filteredEvents.length > pageSize * (page + 1) && (
+            <button
+              className="btn btn-primary mt-3"
+              onClick={() => setPage(page + 1)}
+            >
+              Tovább
+            </button>
+          )}
         </div>
       </div>
 
