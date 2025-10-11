@@ -5,6 +5,7 @@ import headerImage from "../assets/header.jpg";
 import placeholderImage from "../assets/card_1.jpg";
 import { Modal, Button, Pagination, Badge } from "react-bootstrap";
 import EditEventForm from "./EditEventForm";
+import "./EventList.css";
 
 export default function EventList({ user }) {
   const [events, setEvents] = useState([]);
@@ -151,7 +152,9 @@ export default function EventList({ user }) {
 
       <div className="row">
         {/* Bal oldali filterek (ragadós) */}
-        <div className="col-md-3 mb-3" style={{ position: "sticky", top: "1rem", height: "fit-content" }}>
+        <div
+			className="col-md-3 mb-3 sidebar-sticky"
+		>
           <strong>Célcsoport:</strong>
           <div className="d-flex flex-column mt-2">
             {targetGroups.map((group) => (

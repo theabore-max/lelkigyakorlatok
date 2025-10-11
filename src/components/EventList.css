@@ -1,0 +1,14 @@
+/* Desktopon (>=768px) legyen sticky */
+@media (min-width: 768px) {
+  .sidebar-sticky {
+    position: sticky;
+    top: 1rem;
+  }
+}
+
+/* Mobilon legyen sima, hogy az egész oldal görgessen */
+@media (max-width: 767.98px) {
+  .sidebar-sticky {
+    position: static;
+  }
+}
