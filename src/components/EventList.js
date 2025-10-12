@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import headerImage from "../assets/header.jpg";
-// import placeholderImage from "../assets/card_1.jpg"; // már nem kell
+import placeholderImage from "../assets/card_1.jpg"; // ← fallback kép a kártya tetejére
 import { Modal, Button, Pagination, Badge } from "react-bootstrap";
 import EditEventForm from "./EditEventForm";
 import Seo from "./Seo";
@@ -10,10 +10,10 @@ import "./EventList.css";
 
 export default function EventList({ user }) {
   const [events, setEvents] = useState([]);
-  const [filter, setFilter] = useState("Mindenki");        // célcsoport vagy "sajat"
-  const [sourceFilter, setSourceFilter] = useState("mind"); // mind | kezi | auto
-  const [q, setQ] = useState("");                           // kereső (cím/helyszín)
-  const [month, setMonth] = useState("osszes");             // "osszes" | "1".."12"
+  const [filter, setFilter] = useState("Mindenki");
+  const [sourceFilter, setSourceFilter] = useState("mind");
+  const [q, setQ] = useState("");
+  const [month, setMonth] = useState("osszes");
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(9);
@@ -31,7 +31,7 @@ export default function EventList({ user }) {
       .from("events")
       .select(`
         id, title, location, description, start_date, end_date,
-        contact, registration_link, target_group, source, created_by,
+        contact, registration_link, target_group, source, created_by, image_url,
         communities (id, name)
       `)
       .gte("start_date", new Date().toISOString())
@@ -41,10 +41,10 @@ export default function EventList({ user }) {
     else setEvents(data);
   }
 
-  // --- segédek (kártyastílus, dátum, placeholder SVG) ---
+  // --- segédek ---
   const isOwn = (e) => user && e.created_by === user.id;
-  const isManual = (e) => !!e.created_by;            // kézzel felvitt (app)
-  const isAuto = (e) => !!e.source && !e.created_by; // RSS/scraper
+  const isManual = (e) => !!e.created_by;
+  const isAuto = (e) => !!e.source && !e.created_by;
 
   function cardStyle(e) {
     if (isOwn(e))    return { border: "border-success",   badge: "Saját",       badgeVariant: "success" };
@@ -62,161 +62,57 @@ export default function EventList({ user }) {
     return `${start} – ${end}`;
   }
 
-  // --- Placeholder SVG helper-ek (ikonos) ---
-  const TG_COLORS = {
-    "Mindenki": ["#e8f0fe", "#f1f5ff"],
-    "Fiatalok": ["#e6f7f2", "#eafdf7"],
-    "Idősek": ["#f9f2e8", "#fff7ec"],
-    "Fiatal házasok": ["#fbe8ef", "#fff0f6"],
-    "Érett házasok": ["#f1effb", "#f7f4ff"],
-    "Jegyesek": ["#e8f9ff", "#f0fcff"],
-    "Tinédzserek": ["#eefbe8", "#f6fff0"],
-    "Családok": ["#fff1e8", "#fff6ef"],
-  };
-
-  function shortTitle(t, max = 28) {
-    const s = (t || "").trim();
-    return s.length > max ? s.slice(0, max - 1) + "…" : s || "Lelkigyakorlat";
-  }
-  function shortDateRange(startISO, endISO) {
-    if (!startISO) return "";
-    const opts = { year: "numeric", month: "short", day: "numeric" };
-    const s = new Date(startISO).toLocaleDateString("hu-HU", opts);
-    if (!endISO) return s;
-    const e = new Date(endISO).toLocaleDateString("hu-HU", opts);
-    return `${s} – ${e}`;
-  }
-  function escapeXml(s = "") {
-    return s.replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&apos;");
-  }
-
-  // minimal piktogramok (stroke-only, 56x56 dobozban)
+  // --- Minimal, egységes piktogramok a célcsoporthoz (SVG) ---
   function iconSvgForGroup(group = "") {
-  const g = group.toLowerCase();
+    const g = (group || "").toLowerCase();
+    const stroke = "#0f172a";
+    const sw = 3.5;
+    const fillSoft = "#0f172a";
 
-  const stroke = "#0f172a";
-  const sw = 4; // kicsit vastagabb
-  const fillSoft = "#0f172a";
-
-  // Jegyesek – két gyűrű
-  if (g.includes("jegyes")) {
+    if (g.includes("jegyes")) {
+      return `
+        <circle cx="26" cy="32" r="10" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="38" cy="32" r="10" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+      `;
+    }
+    if (g.includes("házas")) {
+      return `
+        <path d="M32 48 C18 36, 20 24, 32 28 C44 24, 46 36, 32 48 Z"
+              fill="${fillSoft}" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+      `;
+    }
+    if (g.includes("család")) {
+      return `
+        <circle cx="22" cy="28" r="7" fill="${fillSoft}"/>
+        <circle cx="42" cy="28" r="7" fill="${fillSoft}"/>
+        <circle cx="32" cy="36" r="5" fill="${fillSoft}"/>
+      `;
+    }
+    if (g.includes("idős")) {
+      return `
+        <path d="M20 44 C20 28, 44 28, 44 44 C44 50, 20 50, 20 44 Z"
+              fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M20 44 C26 40, 34 40, 44 44"
+              fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+      `;
+    }
+    if (g.includes("tinédzs")) {
+      return `<path d="M32 16 L24 34 H32 L28 52 L44 28 H36 L40 16 Z" fill="${fillSoft}" />`;
+    }
+    if (g.includes("fiatal")) {
+      return `
+        <path d="M32 18 L36 28 L46 32 L36 36 L32 46 L28 36 L18 32 L28 28 Z"
+              fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+      `;
+    }
+    // Mindenki – templom
     return `
-      <circle cx="26" cy="32" r="10" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="38" cy="32" r="10" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M20 32 L32 22 L44 32" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="22" y="32" width="20" height="18" rx="3" fill="none" stroke="${stroke}" stroke-width="${sw}" />
+      <line x1="32" y1="16" x2="32" y2="22" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"/>
+      <line x1="29" y1="19" x2="35" y2="19" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"/>
     `;
   }
-
-  // Fiatal/Érett házasok – szív
-  if (g.includes("házas")) {
-    return `
-      <path d="M32 48 C18 36, 20 24, 32 28 C44 24, 46 36, 32 48 Z"
-            fill="${fillSoft}" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
-    `;
-  }
-
-  // Családok – 2 nagy + 1 kis fej
-  if (g.includes("család")) {
-    return `
-      <circle cx="22" cy="28" r="7" fill="${fillSoft}"/>
-      <circle cx="42" cy="28" r="7" fill="${fillSoft}"/>
-      <circle cx="32" cy="36" r="5" fill="${fillSoft}"/>
-    `;
-  }
-
-  // Idősek – levél
-  if (g.includes("idős")) {
-    return `
-      <path d="M20 44 C20 28, 44 28, 44 44 C44 50, 20 50, 20 44 Z"
-            fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M20 44 C26 40, 34 40, 44 44"
-            fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
-    `;
-  }
-
-  // Tinédzserek – villám
-  if (g.includes("tinédzs")) {
-    return `
-      <path d="M32 16 L24 34 H32 L28 52 L44 28 H36 L40 16 Z"
-            fill="${fillSoft}" stroke="none"/>
-    `;
-  }
-
-  // Fiatalok – csillogás/sparkle
-  if (g.includes("fiatal")) {
-    return `
-      <path d="M32 18 L36 28 L46 32 L36 36 L32 46 L28 36 L18 32 L28 28 Z"
-            fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
-    `;
-  }
-
-  // Mindenki – templom (tető + kereszt + test)
-  return `
-    <path d="M20 32 L32 22 L44 32" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
-    <rect x="22" y="32" width="20" height="18" rx="3" fill="none" stroke="${stroke}" stroke-width="${sw}" />
-    <line x1="32" y1="16" x2="32" y2="22" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"/>
-    <line x1="29" y1="19" x2="35" y2="19" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"/>
-  `;
-}
-
-
- function placeholderDataUrl(event) {
-  const g = event?.target_group || "Mindenki";
-  const [c1, c2] = TG_COLORS[g] || TG_COLORS["Mindenki"];
-  const title = shortTitle(event?.title);
-  const date = shortDateRange(event?.start_date, event?.end_date);
-  const icon = iconSvgForGroup(g);
-
-  // nagyobb biztonsági sáv
-  const pad = 100;         // bal padding
-  const iconBox = pad;    // ikon „kártya”
-  const titleX = pad + 110;
-
-  const svg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"
-       viewBox="0 0 1200 630" preserveAspectRatio="xMinYMin slice">
-    <defs>
-      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="${c1}"/>
-        <stop offset="100%" stop-color="${c2}"/>
-      </linearGradient>
-      <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
-        <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity="0.08"/>
-      </filter>
-    </defs>
-
-    <!-- felső sáv -->
-    <rect width="1200" height="330" fill="url(#g)"/>
-    <!-- alsó háttér -->
-    <rect y="300" width="1200" height="330" fill="#fff"/>
-
-    <!-- ikon-kártya (kicsit lejjebb) -->
-    <rect x="${iconBox}" y="78" width="84" height="84" rx="18" fill="#fff" filter="url(#s)"/>
-    <g transform="translate(${iconBox + 6},84)">
-      <svg width="72" height="72" viewBox="0 0 64 64">
-        ${icon}
-      </svg>
-    </g>
-
-    <!-- cím + dátum -->
-    <text x="${titleX}" y="118" dominant-baseline="hanging"
-          font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto"
-          font-size="44" font-weight="700" fill="#111827">
-      ${escapeXml(title)}
-    </text>
-    <text x="${titleX}" y="178" dominant-baseline="hanging"
-          font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto"
-          font-size="26" fill="#374151">
-      ${escapeXml(date)}
-    </text>
-  </svg>`;
-
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-}
-
 
   // --- szűrés ---
   const filteredEvents = events.filter((event) => {
@@ -225,7 +121,6 @@ export default function EventList({ user }) {
     } else {
       if (filter !== "Mindenki" && event.target_group !== filter) return false;
     }
-
     if (sourceFilter === "kezi" && !isManual(event)) return false;
     if (sourceFilter === "auto" && !isAuto(event)) return false;
 
@@ -235,12 +130,10 @@ export default function EventList({ user }) {
       const needle = q.toLowerCase();
       if (!t.includes(needle) && !l.includes(needle)) return false;
     }
-
     if (month !== "osszes") {
       const m = new Date(event.start_date).getMonth() + 1;
       if (String(m) !== month) return false;
     }
-
     return true;
   });
 
@@ -303,7 +196,7 @@ export default function EventList({ user }) {
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [page, pageSize, filter, sourceFilter, q, month]);
 
-  // SEO dinamikus meta + OG image (az aktuális oldal első eseményéből)
+  // SEO
   const pageTitle =
     filter === "Mindenki"
       ? "Katolikus lelkigyakorlat-kereső – friss események"
@@ -314,7 +207,6 @@ export default function EventList({ user }) {
     typeof window !== "undefined"
       ? window.location.href.split("#")[0]
       : "https://lelkigyakorlatok.vercel.app/";
-
   const first = paginatedEvents?.[0];
   const ogTitle = first?.title || "Lelkigyakorlatok";
   const ogDate  = first ? formatDateRange(first.start_date, first.end_date) : "";
@@ -442,6 +334,9 @@ export default function EventList({ user }) {
           <div className="row mt-3">
             {paginatedEvents.map((event) => {
               const style = cardStyle(event);
+              const imgSrc = event.image_url || placeholderImage; // ← kép választás
+              const icon = iconSvgForGroup(event.target_group);
+
               return (
                 <div key={event.id} className="col-md-4 mb-3">
                   <div
@@ -449,21 +344,47 @@ export default function EventList({ user }) {
                     style={{ cursor: "pointer" }}
                     onClick={() => setSelectedEvent(event)}
                   >
-                    <img
-                      src={placeholderDataUrl(event)}
-                      className="card-img-top"
-                      alt={`${event.title} – vizuális jelző`}
-                      style={{
-                        height: "230px",
-                        width: "100%",
-                        display: "block",
-                        objectFit: "cover",
-                        objectPosition: "left top",
-                        borderTopLeftRadius: "0.375rem",
-                        borderTopRightRadius: "0.375rem",
-                      }}
-                      loading="lazy"
-                    />
+                    {/* Fejléckép + ikon badge */}
+                    <div className="position-relative">
+                      <img
+                        src={imgSrc}
+                        className="card-img-top"
+                        alt={`${event.title} – illusztráció`}
+                        style={{
+                          height: "230px",
+                          width: "100%",
+                          display: "block",
+                          objectFit: "cover",
+                          objectPosition: "center top",
+                          borderTopLeftRadius: "0.375rem",
+                          borderTopRightRadius: "0.375rem",
+                        }}
+                        loading="lazy"
+                      />
+                      <div
+                        className="position-absolute"
+                        style={{
+                          top: "10px",
+                          left: "10px",
+                          background: "rgba(255,255,255,0.95)",
+                          borderRadius: "12px",
+                          padding: "6px",
+                          boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
+                          width: "44px",
+                          height: "44px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-hidden="true"
+                      >
+                        <svg width="32" height="32" viewBox="0 0 64 64" aria-hidden="true">
+                          <g dangerouslySetInnerHTML={{ __html: icon }} />
+                        </svg>
+                      </div>
+                    </div>
+
                     <div className="card-body">
                       <div className="d-flex justify-content-between align-items-start">
                         <h5 className="card-title me-2">{event.title}</h5>
