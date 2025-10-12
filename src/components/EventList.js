@@ -96,110 +96,127 @@ export default function EventList({ user }) {
 
   // minimal piktogramok (stroke-only, 56x56 dobozban)
   function iconSvgForGroup(group = "") {
-    const g = group.toLowerCase();
-    const stroke = "#0f172a";
-    const sw = 3;
-    const fillSoft = "#0f172a";
+  const g = group.toLowerCase();
 
-    if (g.includes("jegyes")) {
-      return `
-        <circle cx="24" cy="28" r="10" fill="none" stroke="${stroke}" stroke-width="${sw}" />
-        <circle cx="32" cy="28" r="10" fill="none" stroke="${stroke}" stroke-width="${sw}" />
-      `;
-    }
-    if (g.includes("házas")) {
-      return `
-        <path d="M28 44 C16 34, 18 22, 28 26 C38 22, 40 34, 28 44 Z"
-              fill="${fillSoft}" stroke="${stroke}" stroke-width="${sw}" />
-      `;
-    }
-    if (g.includes("család")) {
-      return `
-        <circle cx="20" cy="24" r="6" fill="${fillSoft}" />
-        <circle cx="36" cy="24" r="6" fill="${fillSoft}" />
-        <circle cx="28" cy="30" r="4" fill="${fillSoft}" />
-      `;
-    }
-    if (g.includes("idős")) {
-      return `
-        <path d="M18 40 C18 26, 36 26, 36 40 C36 46, 18 46, 18 40 Z"
-              fill="none" stroke="${stroke}" stroke-width="${sw}" />
-        <path d="M18 40 C24 36, 30 36, 36 40" fill="none" stroke="${stroke}" stroke-width="${sw}" />
-      `;
-    }
-    if (g.includes("tinédzs")) {
-      return `
-        <path d="M28 12 L20 30 L28 30 L24 44 L38 24 L30 24 Z" fill="${fillSoft}" />
-      `;
-    }
-    if (g.includes("fiatal")) {
-      return `
-        <path d="M28 14 L32 24 L42 28 L32 32 L28 42 L24 32 L14 28 L24 24 Z"
-              fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round" />
-      `;
-    }
-    // Mindenki – templom
+  const stroke = "#0f172a";
+  const sw = 4; // kicsit vastagabb
+  const fillSoft = "#0f172a";
+
+  // Jegyesek – két gyűrű
+  if (g.includes("jegyes")) {
     return `
-      <path d="M16 28 L28 18 L40 28" fill="none" stroke="${stroke}" stroke-width="${sw}" />
-      <rect x="18" y="28" width="20" height="16" rx="2" fill="none" stroke="${stroke}" stroke-width="${sw}" />
-      <line x1="28" y1="14" x2="28" y2="20" stroke="${stroke}" stroke-width="${sw}" />
-      <line x1="25" y1="17" x2="31" y2="17" stroke="${stroke}" stroke-width="${sw}" />
+      <circle cx="26" cy="32" r="10" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="38" cy="32" r="10" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
     `;
   }
 
-  function placeholderDataUrl(event) {
-    const g = event?.target_group || "Mindenki";
-    const [c1, c2] = TG_COLORS[g] || TG_COLORS["Mindenki"];
-    const title = shortTitle(event?.title);
-    const date = shortDateRange(event?.start_date, event?.end_date);
-    const icon = iconSvgForGroup(g);
-
-    // nagyobb bal oldali „safe area”
-    const pad = 72;
-    const iconBox = pad;
-    const titleX = pad + 96;
-
-    const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"
-         viewBox="0 0 1200 630" preserveAspectRatio="xMinYMin slice">
-      <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="${c1}"/>
-          <stop offset="100%" stop-color="${c2}"/>
-        </linearGradient>
-        <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000000" flood-opacity="0.08"/>
-        </filter>
-      </defs>
-
-      <!-- felső sáv -->
-      <rect width="1200" height="300" fill="url(#g)"/>
-      <!-- alsó háttér (kártya test) -->
-      <rect y="260" width="1200" height="370" fill="#ffffff"/>
-
-      <!-- ikon-kártya -->
-      <rect x="${iconBox}" y="48" width="72" height="72" rx="14" fill="#ffffff" filter="url(#s)"/>
-      <g transform="translate(${iconBox},48)">
-        <svg width="72" height="72" viewBox="0 0 56 56">
-          ${icon}
-        </svg>
-      </g>
-
-      <!-- cím + dátum (baseline fix) -->
-      <text x="${titleX}" y="96" dominant-baseline="hanging"
-            font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto"
-            font-size="44" font-weight="700" fill="#111827">
-        ${escapeXml(title)}
-      </text>
-      <text x="${titleX}" y="146" dominant-baseline="hanging"
-            font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto"
-            font-size="26" fill="#374151">
-        ${escapeXml(date)}
-      </text>
-    </svg>`;
-
-    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  // Fiatal/Érett házasok – szív
+  if (g.includes("házas")) {
+    return `
+      <path d="M32 48 C18 36, 20 24, 32 28 C44 24, 46 36, 32 48 Z"
+            fill="${fillSoft}" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+    `;
   }
+
+  // Családok – 2 nagy + 1 kis fej
+  if (g.includes("család")) {
+    return `
+      <circle cx="22" cy="28" r="7" fill="${fillSoft}"/>
+      <circle cx="42" cy="28" r="7" fill="${fillSoft}"/>
+      <circle cx="32" cy="36" r="5" fill="${fillSoft}"/>
+    `;
+  }
+
+  // Idősek – levél
+  if (g.includes("idős")) {
+    return `
+      <path d="M20 44 C20 28, 44 28, 44 44 C44 50, 20 50, 20 44 Z"
+            fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M20 44 C26 40, 34 40, 44 44"
+            fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+    `;
+  }
+
+  // Tinédzserek – villám
+  if (g.includes("tinédzs")) {
+    return `
+      <path d="M32 16 L24 34 H32 L28 52 L44 28 H36 L40 16 Z"
+            fill="${fillSoft}" stroke="none"/>
+    `;
+  }
+
+  // Fiatalok – csillogás/sparkle
+  if (g.includes("fiatal")) {
+    return `
+      <path d="M32 18 L36 28 L46 32 L36 36 L32 46 L28 36 L18 32 L28 28 Z"
+            fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+    `;
+  }
+
+  // Mindenki – templom (tető + kereszt + test)
+  return `
+    <path d="M20 32 L32 22 L44 32" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="22" y="32" width="20" height="18" rx="3" fill="none" stroke="${stroke}" stroke-width="${sw}" />
+    <line x1="32" y1="16" x2="32" y2="22" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"/>
+    <line x1="29" y1="19" x2="35" y2="19" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"/>
+  `;
+}
+
+
+ function placeholderDataUrl(event) {
+  const g = event?.target_group || "Mindenki";
+  const [c1, c2] = TG_COLORS[g] || TG_COLORS["Mindenki"];
+  const title = shortTitle(event?.title);
+  const date = shortDateRange(event?.start_date, event?.end_date);
+  const icon = iconSvgForGroup(g);
+
+  // nagyobb biztonsági sáv
+  const pad = 84;         // bal padding
+  const iconBox = pad;    // ikon „kártya”
+  const titleX = pad + 110;
+
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"
+       viewBox="0 0 1200 630" preserveAspectRatio="xMinYMin slice">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="${c1}"/>
+        <stop offset="100%" stop-color="${c2}"/>
+      </linearGradient>
+      <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity="0.08"/>
+      </filter>
+    </defs>
+
+    <!-- felső sáv -->
+    <rect width="1200" height="300" fill="url(#g)"/>
+    <!-- alsó háttér -->
+    <rect y="300" width="1200" height="330" fill="#fff"/>
+
+    <!-- ikon-kártya (kicsit lejjebb) -->
+    <rect x="${iconBox}" y="64" width="76" height="76" rx="16" fill="#fff" filter="url(#s)"/>
+    <g transform="translate(${iconBox + 6},70)">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        ${icon}
+      </svg>
+    </g>
+
+    <!-- cím + dátum -->
+    <text x="${titleX}" y="100" dominant-baseline="hanging"
+          font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto"
+          font-size="44" font-weight="700" fill="#111827">
+      ${escapeXml(title)}
+    </text>
+    <text x="${titleX}" y="150" dominant-baseline="hanging"
+          font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto"
+          font-size="26" fill="#374151">
+      ${escapeXml(date)}
+    </text>
+  </svg>`;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
 
   // --- szűrés ---
   const filteredEvents = events.filter((event) => {
