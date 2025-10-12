@@ -5,26 +5,38 @@ import headerImage from "../assets/header.jpg";
 import placeholderImage from "../assets/card_1.jpg";
 import { Modal, Button, Pagination, Badge } from "react-bootstrap";
 import EditEventForm from "./EditEventForm";
-import "./EventList.css";
+import { Helmet } from "react-helmet-async";
+import "./EventList.css"; // lásd: sticky sidebar media query
+import Seo from "./Seo";
 
 export default function EventList({ user }) {
   const [events, setEvents] = useState([]);
-  const [filter, setFilter] = useState("Mindenki");       // célcsoport vagy "sajat"
+  const [filter, setFilter] = useState("Mindenki");        // célcsoport vagy "sajat"
   const [sourceFilter, setSourceFilter] = useState("mind"); // mind | kezi | auto
+  const [q, setQ] = useState("");                           // kereső (cím/helyszín)
+  const [month, setMonth] = useState("osszes");             // "osszes" | "1".."12"
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(9);
   const [editEvent, setEditEvent] = useState(null);
+  
+  const ogImage = `/api/og?title=${encodeURIComponent(paginatedEvents[0]?.title || "Lelkigyakorlatok")}&date=${encodeURIComponent(formatDateRange(paginatedEvents[0]?.start_date, paginatedEvents[0]?.end_date))}&place=${encodeURIComponent(paginatedEvents[0]?.location || "")}`;
+// Seo komponens
+  const url = typeof window !== "undefined"
+  ? window.location.href.split("#")[0]
+  : "https://lelkigyakorlatok.vercel.app/";
+
+  <Seo
+  title={pageTitle}
+  description={pageDesc}
+  url={url}
+  image={ogImage}
+  />
+	
 
   const [targetGroups] = useState([
-    "Fiatalok",
-    "Mindenki",
-    "Idősek",
-    "Fiatal házasok",
-    "Érett házasok",
-    "Jegyesek",
-    "Tinédzserek",
-    "Családok",
+    "Fiatalok", "Mindenki", "Idősek", "Fiatal házasok",
+    "Érett házasok", "Jegyesek", "Tinédzserek", "Családok",
   ]);
 
   useEffect(() => { fetchEvents(); }, []);
@@ -44,16 +56,25 @@ export default function EventList({ user }) {
     else setEvents(data);
   }
 
-  // --- jelölések ---
+  // --- segédek ---
   const isOwn = (e) => user && e.created_by === user.id;
-  const isManual = (e) => !!e.created_by;                         // appban felvitt
-  const isAuto = (e) => !!e.source && !e.created_by;              // rss/scraper
+  const isManual = (e) => !!e.created_by;            // kézzel felvitt (app)
+  const isAuto = (e) => !!e.source && !e.created_by; // RSS/scraper
 
   function cardStyle(e) {
-    if (isOwn(e))   return { border: "border-success", badge: "Saját",    badgeVariant: "success" };
-    if (isAuto(e))  return { border: "border-secondary", badge: "Automatikus", badgeVariant: "secondary" };
-    if (isManual(e))return { border: "border-primary", badge: "Kézi",     badgeVariant: "primary" };
+    if (isOwn(e))    return { border: "border-success",   badge: "Saját",       badgeVariant: "success" };
+    if (isAuto(e))   return { border: "border-secondary", badge: "Automatikus", badgeVariant: "secondary" };
+    if (isManual(e)) return { border: "border-primary",   badge: "Kézi",        badgeVariant: "primary" };
     return { border: "border-light", badge: null };
+  }
+
+  function formatDateRange(startISO, endISO) {
+    if (!startISO) return "—";
+    const opts = { year: "numeric", month: "long", day: "numeric" };
+    const start = new Date(startISO).toLocaleDateString("hu-HU", opts);
+    if (!endISO) return start;
+    const end = new Date(endISO).toLocaleDateString("hu-HU", opts);
+    return `${start} – ${end}`;
   }
 
   // --- szűrés ---
@@ -66,9 +87,23 @@ export default function EventList({ user }) {
       if (filter !== "Mindenki" && event.target_group !== filter) return false;
     }
 
-    // Forrás szerinti szűrő
+    // Forrás
     if (sourceFilter === "kezi" && !isManual(event)) return false;
     if (sourceFilter === "auto" && !isAuto(event)) return false;
+
+    // Kereső (cím/helyszín)
+    if (q) {
+      const t = (event.title || "").toLowerCase();
+      const l = (event.location || "").toLowerCase();
+      const needle = q.toLowerCase();
+      if (!t.includes(needle) && !l.includes(needle)) return false;
+    }
+
+    // Hónap (1..12) az indulási dátum alapján
+    if (month !== "osszes") {
+      const m = new Date(event.start_date).getMonth() + 1;
+      if (String(m) !== month) return false;
+    }
 
     return true;
   });
@@ -130,11 +165,34 @@ export default function EventList({ user }) {
     );
   }
 
-  // Lapváltáskor gördüljünk fel
-  useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [page, pageSize, filter, sourceFilter]);
+  // Lapváltás / szűrőváltás → görgetés tetejére
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [page, pageSize, filter, sourceFilter, q, month]);
+
+  // SEO dinamikus meta
+  const pageTitle =
+    filter === "Mindenki"
+      ? "Katolikus lelkigyakorlat-kereső – friss események"
+      : `Lelkigyakorlatok – ${filter.toLowerCase()} célcsoport`;
+  const pageDesc =
+    "Friss katolikus lelkigyakorlatok egy helyen. Szűrés célcsoport, hónap, forrás szerint – jelentkezési linkekkel.";
+  const canonical =
+    typeof window !== "undefined"
+      ? window.location.href.split("#")[0]
+      : "https://lelkigyakorlatok.vercel.app/";
 
   return (
     <div className="container mt-4">
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDesc} />
+        <link rel="canonical" href={canonical} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDesc} />
+        <meta property="og:url" content={canonical} />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDesc} />
+      </Helmet>
+
       {!user && (
         <div className="alert alert-info text-center">
           Lelkigyakorlatok létrehozásához be kell lépned, ezután tudod a saját
@@ -151,10 +209,8 @@ export default function EventList({ user }) {
       </div>
 
       <div className="row">
-        {/* Bal oldali filterek (ragadós) */}
-        <div
-			className="col-md-3 mb-3 sidebar-sticky"
-		>
+        {/* Bal oldali filterek (sticky desktopon – lásd EventList.css) */}
+        <div className="col-md-3 mb-3 sidebar-sticky">
           <strong>Célcsoport:</strong>
           <div className="d-flex flex-column mt-2">
             {targetGroups.map((group) => (
@@ -177,7 +233,7 @@ export default function EventList({ user }) {
             )}
           </div>
 
-          {/* ÚJ: Forrás szerinti szűrő */}
+          {/* Forrás szerinti szűrő */}
           <hr />
           <strong>Forrás:</strong>
           <div className="d-flex flex-column mt-2">
@@ -209,12 +265,44 @@ export default function EventList({ user }) {
           </div>
         </div>
 
-        {/* Jobb oldali események */}
+        {/* Jobb oldali lista */}
         <div className="col-md-9">
+          {/* Gyors kereső + hónap-chipek */}
+          <div className="d-flex flex-column gap-2">
+            <div className="d-flex gap-2">
+              <input
+                className="form-control"
+                placeholder="Keresés cím vagy helyszín szerint…"
+                value={q}
+                onChange={(e) => { setQ(e.target.value); setPage(0); }}
+              />
+            </div>
+
+            <div className="d-flex flex-wrap gap-2">
+              {["osszes","1","2","3","4","5","6","7","8","9","10","11","12"].map(m => (
+                <button
+                  key={m}
+                  className={`btn btn-sm ${month===m ? "btn-primary" : "btn-outline-primary"}`}
+                  onClick={() => { setMonth(m); setPage(0); }}
+                >
+                  {m==="osszes" ? "Összes hónap" : `${m}. hónap`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Lapozó felül */}
           {renderPager()}
 
           {paginatedEvents.length === 0 && (
-            <p className="mt-3">Nincs elérhető esemény a megadott szűrők szerint.</p>
+            <div className="alert alert-secondary mt-3">
+              Nincs találat a megadott szűrőkkel. Próbáld:
+              <ul className="mb-0">
+                <li>töröld a keresőkifejezést</li>
+                <li>állítsd „Összes hónap”-ra</li>
+                <li>kapcsold ki a „Forrás” szűrőt</li>
+              </ul>
+            </div>
           )}
 
           <div className="row mt-3">
@@ -231,7 +319,7 @@ export default function EventList({ user }) {
                       src={placeholderImage}
                       className="card-img-top"
                       alt="Esemény"
-                      style={{ height: "20px", objectFit: "cover" }}
+                      style={{ height: "180px", objectFit: "cover" }}  // nagyobb vizuál
                     />
                     <div className="card-body">
                       <div className="d-flex justify-content-between align-items-start">
@@ -240,13 +328,26 @@ export default function EventList({ user }) {
                       </div>
 
                       <p className="card-text mb-2">
-                        {event.location || "—"} – {new Date(event.start_date).toLocaleString()}
+                        {event.location || "—"} — {formatDateRange(event.start_date, event.end_date)}
                       </p>
+
+                      {/* Direkt konverzió */}
+                      {event.registration_link && (
+                        <a
+                          className="btn btn-sm btn-outline-primary"
+                          href={event.registration_link}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Jelentkezés
+                        </a>
+                      )}
 
                       {/* Szerkesztés (csak saját) */}
                       {user && event.created_by === user.id && (
                         <button
-                          className="btn btn-sm btn-warning"
+                          className="btn btn-sm btn-warning ms-2"
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditEvent(event);
@@ -262,6 +363,7 @@ export default function EventList({ user }) {
             })}
           </div>
 
+          {/* Lapozó alul */}
           {renderPager()}
         </div>
       </div>
@@ -276,9 +378,9 @@ export default function EventList({ user }) {
             <p><strong>Leírás:</strong> {selectedEvent.description}</p>
             <p><strong>Célcsoport:</strong> {selectedEvent.target_group}</p>
             <p><strong>Helyszín:</strong> {selectedEvent.location}</p>
-            <p><strong>Kezdés:</strong> {new Date(selectedEvent.start_date).toLocaleString()}</p>
+            <p><strong>Kezdés:</strong> {formatDateRange(selectedEvent.start_date, null)}</p>
             {selectedEvent.end_date && (
-              <p><strong>Befejezés:</strong> {new Date(selectedEvent.end_date).toLocaleString()}</p>
+              <p><strong>Befejezés:</strong> {formatDateRange(selectedEvent.end_date, null)}</p>
             )}
             <p><strong>Kapcsolattartó:</strong> {selectedEvent.contact}</p>
             <p><strong>Szervező közösség:</strong> {selectedEvent.communities?.name || "Nincs megadva"}</p>
@@ -332,4 +434,3 @@ export default function EventList({ user }) {
     </div>
   );
 }
-
