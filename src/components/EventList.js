@@ -26,20 +26,41 @@ export default function EventList({ user }) {
 
   useEffect(() => { fetchEvents(); }, []);
 
-  async function fetchEvents() {
-    const { data, error } = await supabase
-      .from("events")
+ async function fetchEvents() {
+  const base = supabase.from("events");
+
+  // 1. próba: image_url + communities
+  let { data, error } = await base
+    .select(`
+      id, title, location, description, start_date, end_date,
+      contact, registration_link, target_group, source, created_by, image_url,
+      communities (id, name)
+    `)
+    .gte("start_date", new Date().toISOString())
+    .order("start_date", { ascending: true });
+
+  // Ha az image_url miatt hibázik (vagy bármilyen select-hiba), újrapróbáljuk nélküle
+  if (error) {
+    console.warn("Lekérdezés image_url-lel hibázott, fallback indul:", error?.message || error);
+    ({ data, error } = await base
       .select(`
         id, title, location, description, start_date, end_date,
-        contact, registration_link, target_group, source, created_by, image_url,
+        contact, registration_link, target_group, source, created_by,
         communities (id, name)
       `)
       .gte("start_date", new Date().toISOString())
-      .order("start_date", { ascending: true });
-
-    if (error) console.log("Hiba az események lekérdezésénél:", error);
-    else setEvents(data);
+      .order("start_date", { ascending: true })
+    );
   }
+
+  if (error) {
+    console.error("Hiba az események lekérdezésénél:", error);
+    setEvents([]); // ne maradjon “megfagyva” a UI
+  } else {
+    setEvents(data || []);
+  }
+}
+
 
   // --- segédek ---
   const isOwn = (e) => user && e.created_by === user.id;
