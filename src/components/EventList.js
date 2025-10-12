@@ -171,9 +171,9 @@ export default function EventList({ user }) {
   const icon = iconSvgForGroup(g);
 
   // nagyobb biztonsági sáv
-  const pad = 110;         // bal padding
+  const pad = 100;         // bal padding
   const iconBox = pad;    // ikon „kártya”
-  const titleX = pad + 120;
+  const titleX = pad + 110;
 
   const svg = `
   <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"
