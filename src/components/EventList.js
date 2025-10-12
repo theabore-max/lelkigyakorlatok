@@ -2,12 +2,11 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import headerImage from "../assets/header.jpg";
-import placeholderImage from "../assets/card_1.jpg";
+// import placeholderImage from "../assets/card_1.jpg"; // már nem kell
 import { Modal, Button, Pagination, Badge } from "react-bootstrap";
 import EditEventForm from "./EditEventForm";
-import { Helmet } from "react-helmet-async";
-import "./EventList.css"; // lásd: sticky sidebar media query
 import Seo from "./Seo";
+import "./EventList.css";
 
 export default function EventList({ user }) {
   const [events, setEvents] = useState([]);
@@ -19,20 +18,6 @@ export default function EventList({ user }) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(9);
   const [editEvent, setEditEvent] = useState(null);
-  
-  const ogImage = `/api/og?title=${encodeURIComponent(paginatedEvents[0]?.title || "Lelkigyakorlatok")}&date=${encodeURIComponent(formatDateRange(paginatedEvents[0]?.start_date, paginatedEvents[0]?.end_date))}&place=${encodeURIComponent(paginatedEvents[0]?.location || "")}`;
-// Seo komponens
-  const url = typeof window !== "undefined"
-  ? window.location.href.split("#")[0]
-  : "https://lelkigyakorlatok.vercel.app/";
-
-  <Seo
-  title={pageTitle}
-  description={pageDesc}
-  url={url}
-  image={ogImage}
-  />
-	
 
   const [targetGroups] = useState([
     "Fiatalok", "Mindenki", "Idősek", "Fiatal házasok",
@@ -56,7 +41,7 @@ export default function EventList({ user }) {
     else setEvents(data);
   }
 
-  // --- segédek ---
+  // --- segédek (kártyastílus, dátum, placeholder SVG) ---
   const isOwn = (e) => user && e.created_by === user.id;
   const isManual = (e) => !!e.created_by;            // kézzel felvitt (app)
   const isAuto = (e) => !!e.source && !e.created_by; // RSS/scraper
@@ -77,21 +62,90 @@ export default function EventList({ user }) {
     return `${start} – ${end}`;
   }
 
+  // --- Placeholder SVG helper-ek ---
+  const TG_COLORS = {
+    "Mindenki": ["#e8f0fe", "#f1f5ff"],
+    "Fiatalok": ["#e6f7f2", "#eafdf7"],
+    "Idősek": ["#f9f2e8", "#fff7ec"],
+    "Fiatal házasok": ["#fbe8ef", "#fff0f6"],
+    "Érett házasok": ["#f1effb", "#f7f4ff"],
+    "Jegyesek": ["#e8f9ff", "#f0fcff"],
+    "Tinédzserek": ["#eefbe8", "#f6fff0"],
+    "Családok": ["#fff1e8", "#fff6ef"],
+  };
+
+  function shortTitle(t, max = 24) {
+    const s = (t || "").trim();
+    return s.length > max ? s.slice(0, max - 1) + "…" : s || "Lelkigyakorlat";
+  }
+
+  function shortDateRange(startISO, endISO) {
+    if (!startISO) return "";
+    const opts = { year: "numeric", month: "short", day: "numeric" };
+    const s = new Date(startISO).toLocaleDateString("hu-HU", opts);
+    if (!endISO) return s;
+    const e = new Date(endISO).toLocaleDateString("hu-HU", opts);
+    return `${s} – ${e}`;
+  }
+
+  function tgEmoji(group = "") {
+    const g = group.toLowerCase();
+    if (g.includes("jegyes")) return "💍";
+    if (g.includes("tinédzs")) return "🎒";
+    if (g.includes("fiatal házas")) return "💑";
+    if (g.includes("érett házas")) return "👨‍👩‍👧";
+    if (g.includes("család")) return "🧑‍🤝‍🧑";
+    if (g.includes("idős")) return "🕊️";
+    if (g.includes("fiatal")) return "✨";
+    return "⛪";
+  }
+
+  function escapeXml(s = "") {
+    return s.replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&apos;");
+  }
+
+  function placeholderDataUrl(event) {
+    const g = event?.target_group || "Mindenki";
+    const [c1, c2] = TG_COLORS[g] || TG_COLORS["Mindenki"];
+    const title = shortTitle(event?.title);
+    const date = shortDateRange(event?.start_date, event?.end_date);
+    const icon = tgEmoji(g);
+
+    const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="${c1}"/>
+          <stop offset="100%" stop-color="${c2}"/>
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="630" fill="url(#g)"/>
+      <text x="60" y="140" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto" font-size="72" fill="#1f2937">${icon}</text>
+      <text x="60" y="240" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto" font-size="44" font-weight="700" fill="#111827">
+        ${escapeXml(title)}
+      </text>
+      <text x="60" y="300" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto" font-size="28" fill="#374151">
+        ${escapeXml(date)}
+      </text>
+    </svg>`;
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  }
+
   // --- szűrés ---
   const filteredEvents = events.filter((event) => {
-    // Saját
     if (filter === "sajat") {
       if (!isOwn(event)) return false;
     } else {
-      // Célcsoport
       if (filter !== "Mindenki" && event.target_group !== filter) return false;
     }
 
-    // Forrás
     if (sourceFilter === "kezi" && !isManual(event)) return false;
     if (sourceFilter === "auto" && !isAuto(event)) return false;
 
-    // Kereső (cím/helyszín)
     if (q) {
       const t = (event.title || "").toLowerCase();
       const l = (event.location || "").toLowerCase();
@@ -99,7 +153,6 @@ export default function EventList({ user }) {
       if (!t.includes(needle) && !l.includes(needle)) return false;
     }
 
-    // Hónap (1..12) az indulási dátum alapján
     if (month !== "osszes") {
       const m = new Date(event.start_date).getMonth() + 1;
       if (String(m) !== month) return false;
@@ -165,33 +218,31 @@ export default function EventList({ user }) {
     );
   }
 
-  // Lapváltás / szűrőváltás → görgetés tetejére
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [page, pageSize, filter, sourceFilter, q, month]);
 
-  // SEO dinamikus meta
+  // SEO dinamikus meta + OG image (az aktuális oldal első eseményéből)
   const pageTitle =
     filter === "Mindenki"
       ? "Katolikus lelkigyakorlat-kereső – friss események"
       : `Lelkigyakorlatok – ${filter.toLowerCase()} célcsoport`;
   const pageDesc =
     "Friss katolikus lelkigyakorlatok egy helyen. Szűrés célcsoport, hónap, forrás szerint – jelentkezési linkekkel.";
-  const canonical =
+  const url =
     typeof window !== "undefined"
       ? window.location.href.split("#")[0]
       : "https://lelkigyakorlatok.vercel.app/";
 
+  const first = paginatedEvents?.[0];
+  const ogTitle = first?.title || "Lelkigyakorlatok";
+  const ogDate  = first ? formatDateRange(first.start_date, first.end_date) : "";
+  const ogPlace = first?.location || "";
+  const ogImage = first
+    ? `/api/og?title=${encodeURIComponent(ogTitle)}&date=${encodeURIComponent(ogDate)}&place=${encodeURIComponent(ogPlace)}`
+    : "/og.jpg";
+
   return (
     <div className="container mt-4">
-      <Helmet>
-        <title>{pageTitle}</title>
-        <meta name="description" content={pageDesc} />
-        <link rel="canonical" href={canonical} />
-        <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content={pageDesc} />
-        <meta property="og:url" content={canonical} />
-        <meta name="twitter:title" content={pageTitle} />
-        <meta name="twitter:description" content={pageDesc} />
-      </Helmet>
+      <Seo title={pageTitle} description={pageDesc} url={url} image={ogImage} />
 
       {!user && (
         <div className="alert alert-info text-center">
@@ -209,7 +260,7 @@ export default function EventList({ user }) {
       </div>
 
       <div className="row">
-        {/* Bal oldali filterek (sticky desktopon – lásd EventList.css) */}
+        {/* Bal oldali filterek */}
         <div className="col-md-3 mb-3 sidebar-sticky">
           <strong>Célcsoport:</strong>
           <div className="d-flex flex-column mt-2">
@@ -233,7 +284,7 @@ export default function EventList({ user }) {
             )}
           </div>
 
-          {/* Forrás szerinti szűrő */}
+          {/* Forrás szűrő */}
           <hr />
           <strong>Forrás:</strong>
           <div className="d-flex flex-column mt-2">
@@ -267,7 +318,7 @@ export default function EventList({ user }) {
 
         {/* Jobb oldali lista */}
         <div className="col-md-9">
-          {/* Gyors kereső + hónap-chipek */}
+          {/* Kereső + hónap-chipek */}
           <div className="d-flex flex-column gap-2">
             <div className="d-flex gap-2">
               <input
@@ -316,10 +367,11 @@ export default function EventList({ user }) {
                     onClick={() => setSelectedEvent(event)}
                   >
                     <img
-                      src={placeholderImage}
+                      src={placeholderDataUrl(event)}
                       className="card-img-top"
-                      alt="Esemény"
-                      style={{ height: "180px", objectFit: "cover" }}  // nagyobb vizuál
+                      alt={`${event.title} – vizuális jelző`}
+                      style={{ height: "180px", objectFit: "cover" }}
+                      loading="lazy"
                     />
                     <div className="card-body">
                       <div className="d-flex justify-content-between align-items-start">
@@ -331,7 +383,6 @@ export default function EventList({ user }) {
                         {event.location || "—"} — {formatDateRange(event.start_date, event.end_date)}
                       </p>
 
-                      {/* Direkt konverzió */}
                       {event.registration_link && (
                         <a
                           className="btn btn-sm btn-outline-primary"
@@ -344,7 +395,6 @@ export default function EventList({ user }) {
                         </a>
                       )}
 
-                      {/* Szerkesztés (csak saját) */}
                       {user && event.created_by === user.id && (
                         <button
                           className="btn btn-sm btn-warning ms-2"
@@ -434,3 +484,5 @@ export default function EventList({ user }) {
     </div>
   );
 }
+
+
