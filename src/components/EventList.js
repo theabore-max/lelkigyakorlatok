@@ -63,77 +63,152 @@ export default function EventList({ user }) {
   }
 
   // --- Placeholder SVG helper-ek ---
-  const TG_COLORS = {
-    "Mindenki": ["#e8f0fe", "#f1f5ff"],
-    "Fiatalok": ["#e6f7f2", "#eafdf7"],
-    "Idősek": ["#f9f2e8", "#fff7ec"],
-    "Fiatal házasok": ["#fbe8ef", "#fff0f6"],
-    "Érett házasok": ["#f1effb", "#f7f4ff"],
-    "Jegyesek": ["#e8f9ff", "#f0fcff"],
-    "Tinédzserek": ["#eefbe8", "#f6fff0"],
-    "Családok": ["#fff1e8", "#fff6ef"],
-  };
+  // --- Placeholder SVG helper-ek (ikonos, emoji helyett) ---
+const TG_COLORS = {
+  "Mindenki": ["#e8f0fe", "#f1f5ff"],
+  "Fiatalok": ["#e6f7f2", "#eafdf7"],
+  "Idősek": ["#f9f2e8", "#fff7ec"],
+  "Fiatal házasok": ["#fbe8ef", "#fff0f6"],
+  "Érett házasok": ["#f1effb", "#f7f4ff"],
+  "Jegyesek": ["#e8f9ff", "#f0fcff"],
+  "Tinédzserek": ["#eefbe8", "#f6fff0"],
+  "Családok": ["#fff1e8", "#fff6ef"],
+};
 
-  function shortTitle(t, max = 24) {
-    const s = (t || "").trim();
-    return s.length > max ? s.slice(0, max - 1) + "…" : s || "Lelkigyakorlat";
+function shortTitle(t, max = 28) {
+  const s = (t || "").trim();
+  return s.length > max ? s.slice(0, max - 1) + "…" : s || "Lelkigyakorlat";
+}
+function shortDateRange(startISO, endISO) {
+  if (!startISO) return "";
+  const opts = { year: "numeric", month: "short", day: "numeric" };
+  const s = new Date(startISO).toLocaleDateString("hu-HU", opts);
+  if (!endISO) return s;
+  const e = new Date(endISO).toLocaleDateString("hu-HU", opts);
+  return `${s} – ${e}`;
+}
+function escapeXml(s = "") {
+  return s.replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&apos;");
+}
+
+// minimal piktogramok (stroke-only, 56x56 dobozban)
+function iconSvgForGroup(group = "") {
+  const g = group.toLowerCase();
+
+  const stroke = "#0f172a";     // sötétkék-szürke
+  const sw = 3;                 // vastagság
+  const fillSoft = "#0f172a";   // néhány kitöltéshez
+
+  // Jegyesek – két gyűrű
+  if (g.includes("jegyes")) {
+    return `
+      <circle cx="24" cy="28" r="10" fill="none" stroke="${stroke}" stroke-width="${sw}" />
+      <circle cx="32" cy="28" r="10" fill="none" stroke="${stroke}" stroke-width="${sw}" />
+    `;
   }
 
-  function shortDateRange(startISO, endISO) {
-    if (!startISO) return "";
-    const opts = { year: "numeric", month: "short", day: "numeric" };
-    const s = new Date(startISO).toLocaleDateString("hu-HU", opts);
-    if (!endISO) return s;
-    const e = new Date(endISO).toLocaleDateString("hu-HU", opts);
-    return `${s} – ${e}`;
+  // Fiatal/Érett házasok – szív
+  if (g.includes("házas")) {
+    return `
+      <path d="M28 44 C16 34, 18 22, 28 26 C38 22, 40 34, 28 44 Z"
+            fill="${fillSoft}" stroke="${stroke}" stroke-width="${sw}" />
+    `;
   }
 
-  function tgEmoji(group = "") {
-    const g = group.toLowerCase();
-    if (g.includes("jegyes")) return "💍";
-    if (g.includes("tinédzs")) return "🎒";
-    if (g.includes("fiatal házas")) return "💑";
-    if (g.includes("érett házas")) return "👨‍👩‍👧";
-    if (g.includes("család")) return "🧑‍🤝‍🧑";
-    if (g.includes("idős")) return "🕊️";
-    if (g.includes("fiatal")) return "✨";
-    return "⛪";
+  // Családok – 2 nagy + 1 kis fej
+  if (g.includes("család")) {
+    return `
+      <circle cx="20" cy="24" r="6" fill="${fillSoft}" />
+      <circle cx="36" cy="24" r="6" fill="${fillSoft}" />
+      <circle cx="28" cy="30" r="4" fill="${fillSoft}" />
+    `;
   }
 
-  function escapeXml(s = "") {
-    return s.replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&apos;");
+  // Idősek – levél
+  if (g.includes("idős")) {
+    return `
+      <path d="M18 40 C18 26, 36 26, 36 40 C36 46, 18 46, 18 40 Z"
+            fill="none" stroke="${stroke}" stroke-width="${sw}" />
+      <path d="M18 40 C24 36, 30 36, 36 40" fill="none" stroke="${stroke}" stroke-width="${sw}" />
+    `;
   }
 
-  function placeholderDataUrl(event) {
-    const g = event?.target_group || "Mindenki";
-    const [c1, c2] = TG_COLORS[g] || TG_COLORS["Mindenki"];
-    const title = shortTitle(event?.title);
-    const date = shortDateRange(event?.start_date, event?.end_date);
-    const icon = tgEmoji(g);
-
-    const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-      <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="${c1}"/>
-          <stop offset="100%" stop-color="${c2}"/>
-        </linearGradient>
-      </defs>
-      <rect width="1200" height="630" fill="url(#g)"/>
-      <text x="60" y="140" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto" font-size="72" fill="#1f2937">${icon}</text>
-      <text x="60" y="240" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto" font-size="44" font-weight="700" fill="#111827">
-        ${escapeXml(title)}
-      </text>
-      <text x="60" y="300" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto" font-size="28" fill="#374151">
-        ${escapeXml(date)}
-      </text>
-    </svg>`;
-    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  // Tinédzserek – villám
+  if (g.includes("tinédzs")) {
+    return `
+      <path d="M28 12 L20 30 L28 30 L24 44 L38 24 L30 24 Z"
+            fill="${fillSoft}" />
+    `;
   }
+
+  // Fiatalok – csillogás/sparkle
+  if (g.includes("fiatal")) {
+    return `
+      <path d="M28 14 L32 24 L42 28 L32 32 L28 42 L24 32 L14 28 L24 24 Z"
+            fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round" />
+    `;
+  }
+
+  // Mindenki – templom (tető + kereszt + test)
+  return `
+    <path d="M16 28 L28 18 L40 28" fill="none" stroke="${stroke}" stroke-width="${sw}" />
+    <rect x="18" y="28" width="20" height="16" rx="2" fill="none" stroke="${stroke}" stroke-width="${sw}" />
+    <line x1="28" y1="14" x2="28" y2="20" stroke="${stroke}" stroke-width="${sw}" />
+    <line x1="25" y1="17" x2="31" y2="17" stroke="${stroke}" stroke-width="${sw}" />
+  `;
+}
+
+function placeholderDataUrl(event) {
+  const g = event?.target_group || "Mindenki";
+  const [c1, c2] = TG_COLORS[g] || TG_COLORS["Mindenki"];
+  const title = shortTitle(event?.title);
+  const date = shortDateRange(event?.start_date, event?.end_date);
+  const icon = iconSvgForGroup(g);
+
+  // top-bár halványabb, alul tiszta fehér – így olvasható a kártya
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="${c1}"/>
+        <stop offset="100%" stop-color="${c2}"/>
+      </linearGradient>
+      <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000000" flood-opacity="0.08"/>
+      </filter>
+    </defs>
+
+    <!-- felső sáv -->
+    <rect width="1200" height="260" fill="url(#g)"/>
+    <!-- alsó háttér (kártya test) -->
+    <rect y="260" width="1200" height="370" fill="#ffffff"/>
+
+    <!-- ikon-kártya -->
+    <rect x="48" y="48" width="64" height="64" rx="14" fill="#ffffff" filter="url(#s)"/>
+    <g transform="translate(48,48)">
+      <svg width="64" height="64" viewBox="0 0 56 56">
+        ${icon}
+      </svg>
+    </g>
+
+    <!-- cím + dátum -->
+    <text x="128" y="86" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto"
+          font-size="36" font-weight="700" fill="#111827">
+      ${escapeXml(title)}
+    </text>
+    <text x="128" y="126" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto"
+          font-size="22" fill="#374151">
+      ${escapeXml(date)}
+    </text>
+  </svg>`;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
 
   // --- szűrés ---
   const filteredEvents = events.filter((event) => {
