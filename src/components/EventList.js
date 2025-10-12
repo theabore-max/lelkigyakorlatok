@@ -171,7 +171,7 @@ function placeholderDataUrl(event) {
 
   // top-bár halványabb, alul tiszta fehér – így olvasható a kártya
   const svg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" preserveAspectRatio="xMinYMin slice">
     <defs>
       <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0%" stop-color="${c1}"/>
@@ -443,10 +443,10 @@ function placeholderDataUrl(event) {
                   >
                     <img
                       src={placeholderDataUrl(event)}
-                      className="card-img-top"
-                      alt={`${event.title} – vizuális jelző`}
-                      style={{ height: "180px", objectFit: "cover" }}
-                      loading="lazy"
+                    className="card-img-top"
+					alt={`${event.title} – vizuális jelző`}
+					style={{ height: "180px", width: "100%", objectFit: "cover", objectPosition: "top" }} // ← top!
+					loading="lazy"
                     />
                     <div className="card-body">
                       <div className="d-flex justify-content-between align-items-start">
