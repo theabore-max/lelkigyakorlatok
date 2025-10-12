@@ -171,9 +171,9 @@ export default function EventList({ user }) {
   const icon = iconSvgForGroup(g);
 
   // nagyobb biztonsági sáv
-  const pad = 84;         // bal padding
+  const pad = 110;         // bal padding
   const iconBox = pad;    // ikon „kártya”
-  const titleX = pad + 110;
+  const titleX = pad + 120;
 
   const svg = `
   <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"
@@ -189,25 +189,25 @@ export default function EventList({ user }) {
     </defs>
 
     <!-- felső sáv -->
-    <rect width="1200" height="300" fill="url(#g)"/>
+    <rect width="1200" height="330" fill="url(#g)"/>
     <!-- alsó háttér -->
     <rect y="300" width="1200" height="330" fill="#fff"/>
 
     <!-- ikon-kártya (kicsit lejjebb) -->
-    <rect x="${iconBox}" y="64" width="76" height="76" rx="16" fill="#fff" filter="url(#s)"/>
-    <g transform="translate(${iconBox + 6},70)">
-      <svg width="64" height="64" viewBox="0 0 64 64">
+    <rect x="${iconBox}" y="78" width="84" height="84" rx="18" fill="#fff" filter="url(#s)"/>
+    <g transform="translate(${iconBox + 6},84)">
+      <svg width="72" height="72" viewBox="0 0 64 64">
         ${icon}
       </svg>
     </g>
 
     <!-- cím + dátum -->
-    <text x="${titleX}" y="100" dominant-baseline="hanging"
+    <text x="${titleX}" y="118" dominant-baseline="hanging"
           font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto"
           font-size="44" font-weight="700" fill="#111827">
       ${escapeXml(title)}
     </text>
-    <text x="${titleX}" y="150" dominant-baseline="hanging"
+    <text x="${titleX}" y="178" dominant-baseline="hanging"
           font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto"
           font-size="26" fill="#374151">
       ${escapeXml(date)}
@@ -454,11 +454,11 @@ export default function EventList({ user }) {
                       className="card-img-top"
                       alt={`${event.title} – vizuális jelző`}
                       style={{
-                        height: "200px",
+                        height: "230px",
                         width: "100%",
                         display: "block",
                         objectFit: "cover",
-                        objectPosition: "top",
+                        objectPosition: "left top",
                         borderTopLeftRadius: "0.375rem",
                         borderTopRightRadius: "0.375rem",
                       }}
