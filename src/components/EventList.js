@@ -173,27 +173,27 @@ export default function EventList({ user }) {
       </defs>
 
       <!-- felső sáv -->
-      <rect width="1200" height="260" fill="url(#g)"/>
+      <rect width="1200" height="300" fill="url(#g)"/>
       <!-- alsó háttér (kártya test) -->
       <rect y="260" width="1200" height="370" fill="#ffffff"/>
 
       <!-- ikon-kártya -->
-      <rect x="${iconBox}" y="48" width="64" height="64" rx="14" fill="#ffffff" filter="url(#s)"/>
+      <rect x="${iconBox}" y="48" width="72" height="72" rx="14" fill="#ffffff" filter="url(#s)"/>
       <g transform="translate(${iconBox},48)">
-        <svg width="64" height="64" viewBox="0 0 56 56">
+        <svg width="72" height="72" viewBox="0 0 56 56">
           ${icon}
         </svg>
       </g>
 
       <!-- cím + dátum (baseline fix) -->
-      <text x="${titleX}" y="86" dominant-baseline="hanging"
+      <text x="${titleX}" y="96" dominant-baseline="hanging"
             font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto"
-            font-size="36" font-weight="700" fill="#111827">
+            font-size="44" font-weight="700" fill="#111827">
         ${escapeXml(title)}
       </text>
-      <text x="${titleX}" y="126" dominant-baseline="hanging"
+      <text x="${titleX}" y="146" dominant-baseline="hanging"
             font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto"
-            font-size="22" fill="#374151">
+            font-size="26" fill="#374151">
         ${escapeXml(date)}
       </text>
     </svg>`;
@@ -437,7 +437,7 @@ export default function EventList({ user }) {
                       className="card-img-top"
                       alt={`${event.title} – vizuális jelző`}
                       style={{
-                        height: "180px",
+                        height: "200px",
                         width: "100%",
                         display: "block",
                         objectFit: "cover",
