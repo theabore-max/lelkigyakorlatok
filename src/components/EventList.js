@@ -82,6 +82,18 @@ export default function EventList({ user }) {
     const end = new Date(endISO).toLocaleDateString("hu-HU", opts);
     return `${start} – ${end}`;
   }
+  // Alap link (kanonikus). Ha van saját domained, IDE írd:
+const CANONICAL_BASE = "https://lelkigyakorlatok.vercel.app/";
+
+// Per-event megosztási URL (analytics-hez UTM paramokkal)
+function shareUrl(eventId) {
+  const url = new URL(CANONICAL_BASE);
+  url.searchParams.set("event", eventId);
+  url.searchParams.set("utm_source", "share");
+  url.searchParams.set("utm_medium", "card");
+  return url.toString();
+}
+
 
   // --- Minimal, egységes piktogramok a célcsoporthoz (SVG) ---
   function iconSvgForGroup(group = "") {
@@ -427,6 +439,36 @@ export default function EventList({ user }) {
                           Jelentkezés
                         </a>
                       )}
+					  {/* Megosztás – Facebook */}
+<a
+  className="btn btn-sm btn-outline-secondary ms-2"
+  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl(event.id))}`}
+  target="_blank"
+  rel="noreferrer"
+  onClick={(e) => e.stopPropagation()}
+>
+  Megosztás
+</a>
+
+{/* Megosztás – E-mail */}
+<a
+  className="btn btn-sm btn-outline-secondary ms-2"
+  href={`mailto:?subject=${encodeURIComponent("Ajánlott lelkigyakorlat")}&body=${encodeURIComponent(`${event.title}\n\n${shareUrl(event.id)}`)}`}
+  onClick={(e) => e.stopPropagation()}
+>
+  E-mail
+</a>
+
+{/* Megosztás – WhatsApp */}
+<a
+  className="btn btn-sm btn-outline-secondary ms-2"
+  href={`https://wa.me/?text=${encodeURIComponent(`${event.title} ${shareUrl(event.id)}`)}`}
+  target="_blank"
+  rel="noreferrer"
+  onClick={(e) => e.stopPropagation()}
+>
+  WhatsApp
+</a>
 
                       {user && event.created_by === user.id && (
                         <button
