@@ -451,13 +451,13 @@ function shareUrl(eventId) {
 </a>
 
 {/* Megosztás – E-mail */}
-<a
-  className="btn btn-sm btn-outline-secondary ms-2"
-  href={`mailto:?subject=${encodeURIComponent("Ajánlott lelkigyakorlat")}&body=${encodeURIComponent(`${event.title}\n\n${shareUrl(event.id)}`)}`}
-  onClick={(e) => e.stopPropagation()}
->
-  E-mail
-</a>
+//<a
+ // className="btn btn-sm btn-outline-secondary ms-2"
+ // href={`mailto:?subject=${encodeURIComponent("Ajánlott lelkigyakorlat")}&body=${encodeURIComponent(`${event.title}\n\n${shareUrl(event.id)}`)}`}
+ // onClick={(e) => e.stopPropagation()}
+//>
+ // E-mail
+//</a>
 
 {/* Megosztás – WhatsApp */}
 <a
