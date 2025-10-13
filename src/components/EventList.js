@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import headerImage from "../assets/header.jpg";
-import placeholderImage from "../assets/card_1.jpg"; // ← fallback kép a kártya tetejére
+import placeholderImage from "../assets/card_1.jpg";
 import { Modal, Button, Pagination, Badge } from "react-bootstrap";
 import EditEventForm from "./EditEventForm";
 import Seo from "./Seo";
@@ -10,8 +10,8 @@ import "./EventList.css";
 
 export default function EventList({ user }) {
   const [events, setEvents] = useState([]);
-  const [filter, setFilter] = useState("Mindenki");
-  const [sourceFilter, setSourceFilter] = useState("mind");
+  const [filter, setFilter] = useState("Mindenki");        // célcsoport vagy "sajat"
+  const [sourceFilter, setSourceFilter] = useState("mind"); // mind | kezi | auto
   const [q, setQ] = useState("");
   const [month, setMonth] = useState("osszes");
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -26,43 +26,41 @@ export default function EventList({ user }) {
 
   useEffect(() => { fetchEvents(); }, []);
 
- async function fetchEvents() {
-  const base = supabase.from("events");
+  // ---- LEKÉRDEZÉS (fallback image_url nélkül is) ----
+  async function fetchEvents() {
+    const base = supabase.from("events");
 
-  // 1. próba: image_url + communities
-  let { data, error } = await base
-    .select(`
-      id, title, location, description, start_date, end_date,
-      contact, registration_link, target_group, source, created_by, image_url,
-      communities (id, name)
-    `)
-    .gte("start_date", new Date().toISOString())
-    .order("start_date", { ascending: true });
-
-  // Ha az image_url miatt hibázik (vagy bármilyen select-hiba), újrapróbáljuk nélküle
-  if (error) {
-    console.warn("Lekérdezés image_url-lel hibázott, fallback indul:", error?.message || error);
-    ({ data, error } = await base
+    let { data, error } = await base
       .select(`
         id, title, location, description, start_date, end_date,
-        contact, registration_link, target_group, source, created_by,
+        contact, registration_link, target_group, source, created_by, image_url,
         communities (id, name)
       `)
       .gte("start_date", new Date().toISOString())
-      .order("start_date", { ascending: true })
-    );
+      .order("start_date", { ascending: true });
+
+    if (error) {
+      console.warn("Lekérdezés image_url-lel hibázott, fallback indul:", error?.message || error);
+      ({ data, error } = await base
+        .select(`
+          id, title, location, description, start_date, end_date,
+          contact, registration_link, target_group, source, created_by,
+          communities (id, name)
+        `)
+        .gte("start_date", new Date().toISOString())
+        .order("start_date", { ascending: true })
+      );
+    }
+
+    if (error) {
+      console.error("Hiba az események lekérdezésénél:", error);
+      setEvents([]);
+    } else {
+      setEvents(data || []);
+    }
   }
 
-  if (error) {
-    console.error("Hiba az események lekérdezésénél:", error);
-    setEvents([]); // ne maradjon “megfagyva” a UI
-  } else {
-    setEvents(data || []);
-  }
-}
-
-
-  // --- segédek ---
+  // ---- SEGÉDEK ----
   const isOwn = (e) => user && e.created_by === user.id;
   const isManual = (e) => !!e.created_by;
   const isAuto = (e) => !!e.source && !e.created_by;
@@ -82,20 +80,28 @@ export default function EventList({ user }) {
     const end = new Date(endISO).toLocaleDateString("hu-HU", opts);
     return `${start} – ${end}`;
   }
-  // Alap link (kanonikus). Ha van saját domained, IDE írd:
-const CANONICAL_BASE = "https://lelkigyakorlatok.vercel.app/";
 
-// Per-event megosztási URL (analytics-hez UTM paramokkal)
-function shareUrl(eventId) {
-  const url = new URL(CANONICAL_BASE);
-  url.searchParams.set("event", eventId);
-  url.searchParams.set("utm_source", "share");
-  url.searchParams.set("utm_medium", "card");
-  return url.toString();
-}
+  // --- Megosztási URL-ek + ikonok ---
+  const CANONICAL_BASE = "https://lelkigyakorlatok.vercel.app"; // ha lesz saját domain, ide írd át
+  const shareUrl = (id) => `${CANONICAL_BASE}/share/${id}`;     // ha még nincs /share/:id, ideiglenesen lehet: `${CANONICAL_BASE}?event=${id}`
 
+  const IconFacebook = (props) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path fill="currentColor" d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.14 8.44 9.94v-7.03H7.9v-2.9h2.54V9.41c0-2.5 1.48-3.9 3.75-3.9 1.09 0 2.24.2 2.24.2v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56v1.87h2.77l-.44 2.9h-2.33V22c4.78-.8 8.44-4.94 8.44-9.94Z"/>
+    </svg>
+  );
+  const IconMail = (props) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path fill="currentColor" d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4-8 5L4 8V6l8 5 8-5v2Z"/>
+    </svg>
+  );
+  const IconWhatsApp = (props) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path fill="currentColor" d="M20.52 3.48A11.86 11.86 0 0 0 12.05 0C5.45 0 .14 5.3.14 11.92c0 2.1.55 4.15 1.61 5.96L0 24l6.28-1.64a12 12 0 0 0 5.76 1.47h.01c6.6 0 11.92-5.31 11.92-11.92 0-3.19-1.24-6.19-3.45-8.43ZM12.05 22a9.99 9.99 0 0 1-5.1-1.4l-.37-.22-3.73.97.99-3.64-.24-.37a10.02 10.02 0 1 1 8.45 4.66Zm5.48-7.43c-.3-.15-1.77-.87-2.05-.96-.27-.1-.47-.15-.67.15-.2.3-.77.95-.94 1.14-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.74-1.64-2.03-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.6-.92-2.18-.24-.58-.49-.5-.67-.5h-.57c-.2 0-.52.07-.8.37-.27.3-1.05 1.02-1.05 2.48 0 1.46 1.08 2.87 1.22 3.07.15.2 2.12 3.23 5.15 4.53.72.31 1.28.49 1.72.63.72.23 1.37.2 1.88.12.58-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35Z"/>
+    </svg>
+  );
 
-  // --- Minimal, egységes piktogramok a célcsoporthoz (SVG) ---
+  // --- Célcsoport-ikon azonos stílusban (badge-re) ---
   function iconSvgForGroup(group = "") {
     const g = (group || "").toLowerCase();
     const stroke = "#0f172a";
@@ -147,7 +153,7 @@ function shareUrl(eventId) {
     `;
   }
 
-  // --- szűrés ---
+  // --- SZŰRÉS ---
   const filteredEvents = events.filter((event) => {
     if (filter === "sajat") {
       if (!isOwn(event)) return false;
@@ -170,7 +176,7 @@ function shareUrl(eventId) {
     return true;
   });
 
-  // --- lapozás ---
+  // --- LAPOZÁS ---
   const total = filteredEvents.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const startIndex = page * pageSize;
@@ -229,7 +235,7 @@ function shareUrl(eventId) {
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [page, pageSize, filter, sourceFilter, q, month]);
 
-  // SEO
+  // --- SEO ---
   const pageTitle =
     filter === "Mindenki"
       ? "Katolikus lelkigyakorlat-kereső – friss események"
@@ -281,7 +287,6 @@ function shareUrl(eventId) {
                 {group}
               </button>
             ))}
-
             {user && (
               <button
                 className={`btn btn-outline-success mt-3 ${filter === "sajat" ? "active" : ""}`}
@@ -367,8 +372,8 @@ function shareUrl(eventId) {
           <div className="row mt-3">
             {paginatedEvents.map((event) => {
               const style = cardStyle(event);
-              const imgSrc = event.image_url || placeholderImage; // ← kép választás
-              const icon = iconSvgForGroup(event.target_group);
+              const imgSrc = event.image_url || placeholderImage;
+              const iconSvg = iconSvgForGroup(event.target_group);
 
               return (
                 <div key={event.id} className="col-md-4 mb-3">
@@ -377,7 +382,7 @@ function shareUrl(eventId) {
                     style={{ cursor: "pointer" }}
                     onClick={() => setSelectedEvent(event)}
                   >
-                    {/* Fejléckép + ikon badge */}
+                    {/* Fejléckép + célcsoport ikon badge */}
                     <div className="position-relative">
                       <img
                         src={imgSrc}
@@ -413,7 +418,7 @@ function shareUrl(eventId) {
                         aria-hidden="true"
                       >
                         <svg width="32" height="32" viewBox="0 0 64 64" aria-hidden="true">
-                          <g dangerouslySetInnerHTML={{ __html: icon }} />
+                          <g dangerouslySetInnerHTML={{ __html: iconSvg }} />
                         </svg>
                       </div>
                     </div>
@@ -428,59 +433,79 @@ function shareUrl(eventId) {
                         {event.location || "—"} — {formatDateRange(event.start_date, event.end_date)}
                       </p>
 
-                      {event.registration_link && (
-                        <a
-                          className="btn btn-sm btn-outline-primary"
-                          href={event.registration_link}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          Jelentkezés
-                        </a>
-                      )}
-					  {/* Megosztás – Facebook */}
-<a
-  className="btn btn-sm btn-outline-secondary ms-2"
-  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl(event.id))}`}
-  target="_blank"
-  rel="noreferrer"
-  onClick={(e) => e.stopPropagation()}
->
-  Megosztás
-</a>
+                      {/* --- Gombsor + megosztás ikonok egy sorban --- */}
+                      <div className="d-flex align-items-center justify-content-between mt-2 flex-wrap gap-2">
+                        {/* BAL: Jelentkezés + (opcionális) Szerkesztés */}
+                        <div className="d-flex align-items-center gap-2">
+                          {event.registration_link && (
+                            <a
+                              className="btn btn-sm btn-outline-primary"
+                              href={event.registration_link}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              Jelentkezés
+                            </a>
+                          )}
 
-{/* Megosztás – E-mail */}
-//<a
- // className="btn btn-sm btn-outline-secondary ms-2"
- // href={`mailto:?subject=${encodeURIComponent("Ajánlott lelkigyakorlat")}&body=${encodeURIComponent(`${event.title}\n\n${shareUrl(event.id)}`)}`}
- // onClick={(e) => e.stopPropagation()}
-//>
- // E-mail
-//</a>
+                          {user && event.created_by === user.id && (
+                            <button
+                              className="btn btn-sm btn-warning"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditEvent(event);
+                              }}
+                            >
+                              ✏️ Szerkesztés
+                            </button>
+                          )}
+                        </div>
 
-{/* Megosztás – WhatsApp */}
-<a
-  className="btn btn-sm btn-outline-secondary ms-2"
-  href={`https://wa.me/?text=${encodeURIComponent(`${event.title} ${shareUrl(event.id)}`)}`}
-  target="_blank"
-  rel="noreferrer"
-  onClick={(e) => e.stopPropagation()}
->
-  WhatsApp
-</a>
+                        {/* JOBB: Megosztás ikonok */}
+                        <div className="d-flex align-items-center gap-2 ms-auto">
+                          {/* Facebook */}
+						<a
+						  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl(event.id))}`}
+						  target="_blank"
+						  rel="noreferrer"
+						  onClick={(e) => e.stopPropagation()}
+						  className="btn btn-light border rounded-circle p-2 share-btn share-fb"
+						  title="Megosztás Facebookon"
+						  aria-label="Megosztás Facebookon"
+						  style={{ width: 36, height: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+						>
+						  <IconFacebook />
+						</a>
 
-                      {user && event.created_by === user.id && (
-                        <button
-                          className="btn btn-sm btn-warning ms-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditEvent(event);
-                          }}
-                        >
-                          ✏️ Szerkesztés
-                        </button>
-                      )}
+						{/* E-mail */}
+						<a
+						  href={`mailto:?subject=${encodeURIComponent("Ajánlott lelkigyakorlat")}&body=${encodeURIComponent(`${event.title}\n\n${shareUrl(event.id)}`)}`}
+						  onClick={(e) => e.stopPropagation()}
+						  className="btn btn-light border rounded-circle p-2 share-btn share-mail"
+						  title="Megosztás e-mailben"
+						  aria-label="Megosztás e-mailben"
+						  style={{ width: 36, height: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+						>
+						  <IconMail />
+						</a>
+
+						{/* WhatsApp */}
+						<a
+						  href={`https://wa.me/?text=${encodeURIComponent(`${event.title} ${shareUrl(event.id)}`)}`}
+						  target="_blank"
+						  rel="noreferrer"
+						  onClick={(e) => e.stopPropagation()}
+						  className="btn btn-light border rounded-circle p-2 share-btn share-wa"
+						  title="Megosztás WhatsAppon"
+						  aria-label="Megosztás WhatsAppon"
+						  style={{ width: 36, height: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+						>
+						  <IconWhatsApp />
+						</a>
+
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -558,4 +583,44 @@ function shareUrl(eventId) {
       )}
     </div>
   );
+  /* Megosztás ikonok stílusai */
+.share-btn {
+  transition: transform .12s ease, background-color .12s ease, color .12s ease, border-color .12s ease, box-shadow .12s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+.share-btn:hover { transform: translateY(-1px); }
+.share-btn:active { transform: translateY(0); }
+
+.share-btn:focus-visible {
+  outline: 2px solid rgba(24,119,242,.6); /* kék fókuszgyűrű */
+  outline-offset: 2px;
+}
+
+/* Facebook kék */
+.share-fb:hover {
+  background-color: #1877F2 !important;
+  border-color: #1877F2 !important;
+  color: #fff !important;
+}
+
+/* E-mail (Google vörös) – ha semlegeset szeretnél, cseréld #ea4335 → #6b7280 */
+.share-mail:hover {
+  background-color: #EA4335 !important;
+  border-color: #EA4335 !important;
+  color: #fff !important;
+}
+
+/* WhatsApp zöld */
+.share-wa:hover {
+  background-color: #25D366 !important;
+  border-color: #25D366 !important;
+  color: #fff !important;
+}
+
+/* Preferált kisebb mozgás esetén ne animáljunk */
+@media (prefers-reduced-motion: reduce) {
+  .share-btn { transition: none; }
+  .share-btn:hover, .share-btn:active { transform: none; }
+}
+
 }
