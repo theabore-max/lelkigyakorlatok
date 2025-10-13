@@ -15,4 +15,44 @@
   .headerImage{
     width: 100%;
   }
+ 
+}
+/* Megosztás ikonok stílusai */
+.share-btn {
+  transition: transform .12s ease, background-color .12s ease, color .12s ease, border-color .12s ease, box-shadow .12s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+.share-btn:hover { transform: translateY(-1px); }
+.share-btn:active { transform: translateY(0); }
+
+.share-btn:focus-visible {
+  outline: 2px solid rgba(24,119,242,.6); /* kék fókuszgyűrű */
+  outline-offset: 2px;
+}
+
+/* Facebook kék */
+.share-fb:hover {
+  background-color: #1877F2 !important;
+  border-color: #1877F2 !important;
+  color: #fff !important;
+}
+
+/* E-mail (Google vörös) – ha semlegeset szeretnél, cseréld #ea4335 → #6b7280 */
+.share-mail:hover {
+  background-color: #EA4335 !important;
+  border-color: #EA4335 !important;
+  color: #fff !important;
+}
+
+/* WhatsApp zöld */
+.share-wa:hover {
+  background-color: #25D366 !important;
+  border-color: #25D366 !important;
+  color: #fff !important;
+}
+
+/* Preferált kisebb mozgás esetén ne animáljunk */
+@media (prefers-reduced-motion: reduce) {
+  .share-btn { transition: none; }
+  .share-btn:hover, .share-btn:active { transform: none; }
 }
