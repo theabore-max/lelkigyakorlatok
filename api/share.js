@@ -1,22 +1,20 @@
 // api/share.js
 const { createClient } = require("@supabase/supabase-js");
 
-// Alapok
 const BASE = process.env.CANONICAL_BASE || "https://lelkigyakorlatok.vercel.app";
 const OG_FALLBACK = "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/og/og_1.jpg";
 
-// Előnyben a SERVICE_ROLE (csak szerveren fut!)
-// Ha nincs, visszaesünk az anon kulcsra.
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const ANON_KEY     = process.env.SUPABASE_ANON_KEY;
+const ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const FB_APP_ID = process.env.FB_APP_ID || "";
 
 const esc = (s = "") =>
-  s.replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
+  s.replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
 const strip = (html = "") => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 const truncate = (s = "", n = 240) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
-// Supabase public képhez OG méret + cache buster
+// Supabase public URL-hez OG méret és minimális cache-buster
 function ogSized(url) {
   if (!url) return OG_FALLBACK;
   let u = url;
@@ -24,7 +22,6 @@ function ogSized(url) {
     const sep = u.includes("?") ? "&" : "?";
     u = `${u}${sep}width=1200&height=630&resize=cover&quality=85`;
   }
-  // cache-buster a scraper felé (ne újratöltsön képet, de új OG képet vegyen fel)
   const sep2 = u.includes("?") ? "&" : "?";
   return `${u}${sep2}fbv=${Date.now() % 100000}`;
 }
@@ -32,41 +29,43 @@ function ogSized(url) {
 module.exports = async (req, res) => {
   try {
     const { id } = req.query || {};
-    if (!id) return notFound(res);
+    if (!id) return sendNotFound(res);
 
     const shareUrl = `${BASE}/api/share?id=${encodeURIComponent(String(id))}`;
     const redirectTarget = `${BASE}/?e=${encodeURIComponent(String(id))}`;
     const noRedirect = String(req.query?.noredirect || "") === "1";
     const debug = String(req.query?.debug || "") === "1";
 
-    // Supabase kliens (service role-t használunk, ha van)
+    // Supabase kliens (service role, ha van)
+    const sb = (SUPABASE_URL && (SERVICE_ROLE || ANON_KEY))
+      ? createClient(SUPABASE_URL, SERVICE_ROLE || ANON_KEY)
+      : null;
+
+    // ---- FONTOS: numerikus vs szöveges ID kezelése
     let row = null;
-    let envInfo = { hasUrl: !!SUPABASE_URL, hasService: !!SERVICE_ROLE, hasAnon: !!ANON_KEY };
+    if (sb) {
+      let q = sb
+        .from("events")
+        .select("id,title,description,location,start_date,image_url,poster_url")
+        .limit(1);
 
-    if (SUPABASE_URL && (SERVICE_ROLE || ANON_KEY)) {
-      const sb = createClient(SUPABASE_URL, SERVICE_ROLE || ANON_KEY);
-	let query = sb
-	  .from("events")
-	  .select("id,title,description,location,start_date,image_url,poster_url")
-	  .limit(1);
+      if (/^\d+$/.test(String(id))) {
+        q = q.eq("id", Number(id));     // int8 → számként szűrjünk
+      } else {
+        q = q.eq("id", String(id));     // ha egyszer UUID/slug lenne
+      }
 
-	if (/^\d+$/.test(String(id))) {
-	  query = query.eq("id", Number(id)); // ha szám, castold
-	} else {
-	  query = query.eq("id", String(id)); // ha szöveg (UUID), akkor marad string
-}
-
-const { data, error } = await query.single();
-      if (!error) row = data || null;
+      const { data } = await q.single();
+      row = data || null;
     }
 
-    // DEBUG mód: JSON visszaadása
+    // DEBUG mód: JSON
     if (debug) {
       const baseImg = row?.poster_url || row?.image_url || OG_FALLBACK;
       return res.status(200).json({
         ok: true,
         id,
-        env: envInfo,
+        env: { hasUrl: !!SUPABASE_URL, hasService: !!SERVICE_ROLE, hasAnon: !!ANON_KEY },
         found: !!row,
         row,
         built: {
@@ -75,7 +74,7 @@ const { data, error } = await query.single();
           image: ogSized(baseImg),
           url: shareUrl,
           redirectTarget,
-        },
+        }
       });
     }
 
@@ -85,21 +84,20 @@ const { data, error } = await query.single();
     const baseImg = row?.poster_url || row?.image_url || OG_FALLBACK;
     const image = ogSized(baseImg);
 
-    res.setHeader("Cache-Control", "public, max-age=600, s-maxage=600"); // 10 perc
+    res.setHeader("Cache-Control", "public, max-age=600, s-maxage=600");
 
-    return sendHtml(res, row ? 200 : 404, ogHtml({
+    // FB kedvéért not found esetén is 200-at adunk OG-val (különben 404 warning)
+    return sendHtml(res, 200, ogHtml({
       title,
       description,
-      url: shareUrl,   // og:url → ezt adtuk meg a sharernek
+      url: shareUrl,
       image,
       redirectTarget,
       noRedirect,
-      // opcionális, ha van app id-d
-      fbAppId: process.env.FB_APP_ID || "",
+      fbAppId: FB_APP_ID,
     }));
-  } catch (e) {
-    // Ha bármi gáz, adjunk legalább korrekt OG-t fallbackkel
-    return notFound(res);
+  } catch {
+    return sendNotFound(res);
   }
 };
 
@@ -107,7 +105,7 @@ function buildTitle(row) {
   if (!row) return "Lelkigyakorlat nem található";
   const base = row.title || "Lelkigyakorlat";
   const date = row.start_date
-    ? new Date(row.start_date).toLocaleDateString("hu-HU", { year:"numeric", month:"long", day:"numeric" })
+    ? new Date(row.start_date).toLocaleDateString("hu-HU", { year: "numeric", month: "long", day: "numeric" })
     : "";
   const place = row.location ? ` • ${row.location}` : "";
   return date ? `${base} — ${date}${place}` : base;
@@ -116,7 +114,7 @@ function buildTitle(row) {
 function buildDescSource(row) {
   if (!row) return "Lehet, hogy az esemény már nem elérhető.";
   const date = row.start_date
-    ? new Date(row.start_date).toLocaleDateString("hu-HU", { year:"numeric", month:"long", day:"numeric" })
+    ? new Date(row.start_date).toLocaleDateString("hu-HU", { year: "numeric", month: "long", day: "numeric" })
     : "";
   const place = row.location ? ` • ${row.location}` : "";
   return (row.description || (date ? `${date}${place}` : "")) || "";
@@ -147,9 +145,6 @@ ${fbAppId ? `<meta property="fb:app_id" content="${esc(fbAppId)}">` : ""}
 <meta name="twitter:title" content="${esc(title)}">
 <meta name="twitter:description" content="${esc(description)}">
 <meta name="twitter:image" content="${esc(image)}">
-
-<!-- debug help (nem látszik az előnézetben) -->
-<!-- ${esc(image)} -->
 </head>
 <body>
   <noscript><p>Megnyitás: <a href="${esc(redirectTarget || BASE)}">${esc(redirectTarget || BASE)}</a></p></noscript>
@@ -162,16 +157,16 @@ function sendHtml(res, status, html) {
   res.status(status).setHeader("Content-Type", "text/html; charset=utf-8").send(html);
 }
 
-function notFound(res) {
+function sendNotFound(res) {
   const url = BASE + "/";
   const redirectTarget = BASE + "/";
-  return sendHtml(res, 404, ogHtml({
+  return sendHtml(res, 200, ogHtml({
     title: "Lelkigyakorlat nem található",
     description: "Lehet, hogy az esemény már nem elérhető.",
     url,
-    image: OG_FALLBACK,
+    image: ogSized(OG_FALLBACK),
     redirectTarget,
     noRedirect: false,
-    fbAppId: process.env.FB_APP_ID || "",
+    fbAppId: FB_APP_ID,
   }));
 }
