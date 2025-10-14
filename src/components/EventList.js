@@ -257,6 +257,17 @@ export default function EventList({ user }) {
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); },
     [page, pageSize, filter, sourceFilter, q, month]);
+	
+useEffect(() => {
+  // csak böngészőben
+  if (typeof window === "undefined") return;
+  const params = new URLSearchParams(window.location.search);
+  const eid = params.get("e");
+  if (!eid || !events?.length) return;
+
+  const ev = events.find(x => String(x.id) === String(eid));
+  if (ev) setSelectedEvent(ev);
+}, [events]);
 
   // --- SEO (OG fallback marad) ---
   const pageTitle = filter==="Mindenki"

@@ -3,21 +3,20 @@ const { createClient } = require("@supabase/supabase-js");
 
 // Állítható alapértékek
 const BASE = process.env.CANONICAL_BASE || "https://lelkigyakorlatok.vercel.app";
-// <<< FIX: statikus OG fallback kép, amit kértél
+// Statikus OG fallback kép
 const OG_FALLBACK = "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/og/og_1.jpg";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
 const esc = (s = "") =>
-  s.replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
+  s.replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
 const strip = (html = "") => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 const truncate = (s = "", n = 240) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
-// Supabase kép URL-hez OG méret (1200x630)
+// Supabase public URL esetén OG méretezés (1200x630)
 function ogSized(url) {
   if (!url) return OG_FALLBACK;
-  // csak Supabase public storage URL-re illesztünk transform paramétert
   if (url.includes("/storage/v1/object/public/")) {
     const hasQuery = url.includes("?");
     return `${url}${hasQuery ? "&" : "?"}width=1200&height=630&resize=cover&quality=85`;
@@ -30,14 +29,18 @@ module.exports = async (req, res) => {
     const { id } = req.query || {};
     if (!id) return notFound(res);
 
-    // Ha nincs SB konfig, adjunk általános OG-t (ne dőljön el)
+    // URL-ek: og:url marad /share/:id, a felhasználót viszont /?e=:id-re visszük
+    const shareUrl = `${BASE}/share/${encodeURIComponent(String(id))}`;
+    const redirectTarget = `${BASE}/?e=${encodeURIComponent(String(id))}`;
+
+    // Ha nincs SB konfig, adjunk általános OG-t
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      const url = `${BASE}/share/${encodeURIComponent(String(id))}`;
       return sendHtml(res, 200, ogHtml({
         title: "Lelkigyakorlat",
         description: "Katolikus lelkigyakorlatok egy helyen.",
-        url,
+        url: shareUrl,
         image: OG_FALLBACK,
+        redirectTarget,
       }));
     }
 
@@ -58,19 +61,17 @@ module.exports = async (req, res) => {
     const descSrc = (date ? `${date}${place}. ` : "") + (data.description || "");
     const description = truncate(strip(descSrc), 240);
 
-    // <<< FIX: kép prioritás + OG méretezés + fallback a megadott URL-re
     const baseImg = data.poster_url || data.image_url || OG_FALLBACK;
     const image = ogSized(baseImg);
 
-    const url = `${BASE}/share/${encodeURIComponent(String(id))}`;
     res.setHeader("Cache-Control", "public, max-age=600, s-maxage=600"); // 10 perc
-    return sendHtml(res, 200, ogHtml({ title, description, url, image }));
+    return sendHtml(res, 200, ogHtml({ title, description, url: shareUrl, image, redirectTarget }));
   } catch {
     return notFound(res);
   }
 };
 
-function ogHtml({ title, description, url, image }) {
+function ogHtml({ title, description, url, image, redirectTarget }) {
   return `<!doctype html>
 <html lang="hu">
 <head>
@@ -95,10 +96,10 @@ function ogHtml({ title, description, url, image }) {
 <meta name="twitter:image" content="${esc(image)}">
 </head>
 <body>
-<noscript><p>Megnyitás: <a href="${esc(BASE)}">${esc(BASE)}</a></p></noscript>
+  <noscript><p>Megnyitás: <a href="${esc(redirectTarget || BASE)}">${esc(redirectTarget || BASE)}</a></p></noscript>
   <script>
-    // A crawler már leolvasta az OG-t, most irányítsuk a látogatót az app főoldalára
-    location.replace("${esc(BASE).replace(/"/g,'\\"')}");
+    // A bot kiolvasta az OG-t a /share/:id oldalról, a látogatót vigyük az appba:
+    location.replace("${esc((redirectTarget || BASE)).replace(/"/g,'\\"')}");
   </script>
 </body>
 </html>`;
@@ -109,10 +110,14 @@ function sendHtml(res, status, html) {
 }
 
 function notFound(res) {
+  const url = BASE + "/";
+  const redirectTarget = BASE + "/";
   return sendHtml(res, 404, ogHtml({
     title: "Lelkigyakorlat nem található",
     description: "Lehet, hogy az esemény már nem elérhető.",
-    url: BASE + "/",
+    url,
     image: OG_FALLBACK,
+    redirectTarget,
   }));
 }
+
