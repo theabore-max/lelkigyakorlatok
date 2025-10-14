@@ -45,11 +45,18 @@ module.exports = async (req, res) => {
 
     if (SUPABASE_URL && (SERVICE_ROLE || ANON_KEY)) {
       const sb = createClient(SUPABASE_URL, SERVICE_ROLE || ANON_KEY);
-      const { data, error } = await sb
-        .from("events")
-        .select("id,title,description,location,start_date,image_url,poster_url")
-        .eq("id", id)
-        .single();
+	let query = sb
+	  .from("events")
+	  .select("id,title,description,location,start_date,image_url,poster_url")
+	  .limit(1);
+
+	if (/^\d+$/.test(String(id))) {
+	  query = query.eq("id", Number(id)); // ha szám, castold
+	} else {
+	  query = query.eq("id", String(id)); // ha szöveg (UUID), akkor marad string
+}
+
+const { data, error } = await query.single();
       if (!error) row = data || null;
     }
 
