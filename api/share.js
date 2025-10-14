@@ -95,8 +95,11 @@ function ogHtml({ title, description, url, image }) {
 <meta name="twitter:image" content="${esc(image)}">
 </head>
 <body>
-  <noscript><p>Megnyitás: <a href="${esc(url)}">${esc(url)}</a></p></noscript>
-  <script>location.replace("${esc(url).replace(/"/g,'\\"')}");</script>
+<noscript><p>Megnyitás: <a href="${esc(BASE)}">${esc(BASE)}</a></p></noscript>
+  <script>
+    // A crawler már leolvasta az OG-t, most irányítsuk a látogatót az app főoldalára
+    location.replace("${esc(BASE).replace(/"/g,'\\"')}");
+  </script>
 </body>
 </html>`;
 }
