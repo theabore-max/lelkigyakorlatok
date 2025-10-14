@@ -4,17 +4,16 @@ const { createClient } = require("@supabase/supabase-js");
 const BASE = process.env.CANONICAL_BASE || "https://lelkigyakorlatok.vercel.app";
 const OG_FALLBACK = "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/og/og_1.jpg";
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const FB_APP_ID = process.env.FB_APP_ID || "";
+const SUPABASE_URL   = process.env.SUPABASE_URL;
+const SERVICE_ROLE   = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ANON_KEY       = process.env.SUPABASE_ANON_KEY;
+const FB_APP_ID      = process.env.FB_APP_ID || "";
 
 const esc = (s = "") =>
-  s.replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
-const strip = (html = "") => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  String(s || "").replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
+const strip = (html = "") => String(html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 const truncate = (s = "", n = 240) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
-// Supabase public URL-hez OG méret és minimális cache-buster
 function ogSized(url) {
   if (!url) return OG_FALLBACK;
   let u = url;
@@ -35,14 +34,33 @@ module.exports = async (req, res) => {
     const redirectTarget = `${BASE}/?e=${encodeURIComponent(String(id))}`;
     const noRedirect = String(req.query?.noredirect || "") === "1";
     const debug = String(req.query?.debug || "") === "1";
+    const list = String(req.query?.list || "") === "1";
 
-    // Supabase kliens (service role, ha van)
-    const sb = (SUPABASE_URL && (SERVICE_ROLE || ANON_KEY))
-      ? createClient(SUPABASE_URL, SERVICE_ROLE || ANON_KEY)
-      : null;
+    // Supabase kliens
+    const key = SERVICE_ROLE || ANON_KEY || "";
+    const envInfo = {
+      hasUrl: !!SUPABASE_URL,
+      hasService: !!SERVICE_ROLE,
+      hasAnon: !!ANON_KEY,
+      // safe preview: csak pár karakter ellenőrzéshez
+      keyPreview: key ? `${key.slice(0, 6)}…${key.slice(-4)}` : ""
+    };
+    const sb = (SUPABASE_URL && key) ? createClient(SUPABASE_URL, key) : null;
 
-    // ---- FONTOS: numerikus vs szöveges ID kezelése
-    let row = null;
+    // ---- listázó debug: projectRef + első 10 rekord ----
+    if (debug && sb && list) {
+      const pr = (SUPABASE_URL || "").match(/https:\/\/([^.]+)\.supabase\.co/);
+      const projectRef = pr ? pr[1] : "(unknown)";
+      const { data: sample, error: listErr } = await sb
+        .from("events")
+        .select("id,title")
+        .order("id", { ascending: true })
+        .limit(10);
+      return res.status(200).json({ ok: true, projectRef, env: envInfo, listErr, sample });
+    }
+
+    // ---- egy rekord olvasása: NEM single(), hanem tömb ----
+    let row = null, selErr = null;
     if (sb) {
       let q = sb
         .from("events")
@@ -50,23 +68,25 @@ module.exports = async (req, res) => {
         .limit(1);
 
       if (/^\d+$/.test(String(id))) {
-        q = q.eq("id", Number(id));     // int8 → számként szűrjünk
+        q = q.eq("id", Number(id));     // int8 → szám
       } else {
-        q = q.eq("id", String(id));     // ha egyszer UUID/slug lenne
+        q = q.eq("id", String(id));     // UUID/slug esetén
       }
 
-      const { data } = await q.single();
-      row = data || null;
+      const { data, error } = await q;
+      selErr = error || null;
+      row = Array.isArray(data) && data.length ? data[0] : null;
     }
 
-    // DEBUG mód: JSON
+    // ---- DEBUG: konkrét rekord helyzetének kiírása ----
     if (debug) {
       const baseImg = row?.poster_url || row?.image_url || OG_FALLBACK;
       return res.status(200).json({
         ok: true,
         id,
-        env: { hasUrl: !!SUPABASE_URL, hasService: !!SERVICE_ROLE, hasAnon: !!ANON_KEY },
+        env: envInfo,
         found: !!row,
+        selErr,
         row,
         built: {
           title: buildTitle(row),
@@ -78,15 +98,13 @@ module.exports = async (req, res) => {
       });
     }
 
-    // OG felépítése
+    // ---- OG felépítése + válasz ----
     const title = buildTitle(row);
     const description = truncate(strip(buildDescSource(row)), 240);
     const baseImg = row?.poster_url || row?.image_url || OG_FALLBACK;
     const image = ogSized(baseImg);
 
     res.setHeader("Cache-Control", "public, max-age=600, s-maxage=600");
-
-    // FB kedvéért not found esetén is 200-at adunk OG-val (különben 404 warning)
     return sendHtml(res, 200, ogHtml({
       title,
       description,
@@ -95,8 +113,9 @@ module.exports = async (req, res) => {
       redirectTarget,
       noRedirect,
       fbAppId: FB_APP_ID,
+      envForDebugComment: envInfo // csak HTML-kommentben hagyjuk ott, preview-hoz
     }));
-  } catch {
+  } catch (e) {
     return sendNotFound(res);
   }
 };
@@ -120,7 +139,7 @@ function buildDescSource(row) {
   return (row.description || (date ? `${date}${place}` : "")) || "";
 }
 
-function ogHtml({ title, description, url, image, redirectTarget, noRedirect, fbAppId }) {
+function ogHtml({ title, description, url, image, redirectTarget, noRedirect, fbAppId, envForDebugComment }) {
   return `<!doctype html>
 <html lang="hu">
 <head>
@@ -149,6 +168,7 @@ ${fbAppId ? `<meta property="fb:app_id" content="${esc(fbAppId)}">` : ""}
 <body>
   <noscript><p>Megnyitás: <a href="${esc(redirectTarget || BASE)}">${esc(redirectTarget || BASE)}</a></p></noscript>
   ${noRedirect ? "" : `<script>location.replace("${esc((redirectTarget || BASE)).replace(/"/g,'\\"')}");</script>`}
+  <!-- env debug (nem jelenik meg preview-ban): ${esc(JSON.stringify(envForDebugComment))} -->
 </body>
 </html>`;
 }
@@ -168,5 +188,7 @@ function sendNotFound(res) {
     redirectTarget,
     noRedirect: false,
     fbAppId: FB_APP_ID,
+    envForDebugComment: {}
   }));
 }
+
