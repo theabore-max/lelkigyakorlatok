@@ -11,4 +11,5 @@
       "schedule": "0 6 * * *"
     }
   ]  
+  { "rewrites": [ { "source": "/share/:id", "destination": "/api/share?id=:id" } ] }
 }
