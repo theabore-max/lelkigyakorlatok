@@ -264,13 +264,19 @@ export default function EventList({ user }) {
     : `Lelkigyakorlatok – ${filter.toLowerCase()} célcsoport`;
   const pageDesc = "Friss katolikus lelkigyakorlatok egy helyen. Szűrés célcsoport, hónap, forrás szerint – jelentkezési linkekkel.";
   const url = typeof window!=="undefined" ? window.location.href.split("#")[0] : CANONICAL_BASE;
+
   const first = paginatedEvents?.[0];
   const ogTitle = first?.title || "Lelkigyakorlatok";
   const ogDate  = first ? formatDateRange(first.start_date, first.end_date) : "";
   const ogPlace = first?.location || "";
+
+  // <<< FIX: statikus OG fallback kép
+  const OG_FALLBACK = "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/og/og_1.jpg";
+
+  // Ha van poszter az első kártyán, azt adhatjuk meg (nem kötelező), különben fix fallback
   const ogImage = first?.poster_url
     ? first.poster_url
-    : (first ? `/api/og?title=${encodeURIComponent(ogTitle)}&date=${encodeURIComponent(ogDate)}&place=${encodeURIComponent(ogPlace)}` : "/og.jpg");
+    : OG_FALLBACK;
 
   // --- ikon a célcsoport badge-hez ---
   function iconSvgForGroup(group = "") {
@@ -439,7 +445,7 @@ export default function EventList({ user }) {
                         </div>
 
                         <div className="d-flex align-items-center gap-2 ms-auto">
-                          <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl(event.id))}`}
+                          <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl(event.id))}`}						  
                              target="_blank" rel="noreferrer" onClick={(e)=>e.stopPropagation()}
                              className="btn btn-light border rounded-circle p-2 share-btn share-fb"
                              title="Megosztás Facebookon" aria-label="Megosztás Facebookon"
