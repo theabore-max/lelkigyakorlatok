@@ -174,7 +174,7 @@ export default function EventList({ user }) {
 
   // --- share URL + ikonok ---
   const CANONICAL_BASE = "https://lelkigyakorlatok.vercel.app";
-  const shareUrl = (id) => `${CANONICAL_BASE}/share/${id}`;
+  const shareUrl = (id) => `${CANONICAL_BASE}/api/share?id=${id}`;
 
   const IconFacebook = (props) => (
     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...props}>

@@ -1,15 +1,9 @@
 {
   "functions": {
-    "api/ingest.js": {
-      "includeFiles": "ingest.mjs",
-      "maxDuration": 60
-    }
+    "api/ingest.js": { "includeFiles": "ingest.mjs", "maxDuration": 60 }
   },
   "crons": [
-    {
-      "path": "/api/ingest",
-      "schedule": "0 6 * * *"
-    }
+    { "path": "/api/ingest", "schedule": "0 6 * * *" }
   ],
   "rewrites": [
     { "source": "/share/:id", "destination": "/api/share?id=:id" }
