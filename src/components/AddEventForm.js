@@ -123,15 +123,12 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
   // --- RENDER ---
 
   return (
-  <form onSubmit={handleSubmit} className="w-full">
-    {/* Rács: 1 oszlop mobilon, 2 oszlop md-től felfelé */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+  <form onSubmit={handleSubmit} className="w-100">
+    <div className="row g-4 align-items-start">
+
       {/* BAL OSZLOP – Kép előnézet */}
-      <div className="w-full">
-        <div
-          className="border rounded-md overflow-hidden shadow-sm bg-gray-50 w-full"
-          style={{ height: 260 }}  // fix előnézet magasság
-        >
+      <div className="col-12 col-md-5" style={{ position: "sticky", top: 16 }}>>
+        <div className="border rounded-3 bg-light overflow-hidden w-100" style={{ height: 260 }}>
           <img
             src={
               posterPreview ||
@@ -142,17 +139,18 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
         </div>
-        <p className="text-sm text-gray-500 mt-2">Illusztráció / poszter előnézet</p>
+        <small className="text-muted d-block mt-2">Illusztráció / poszter előnézet</small>
       </div>
 
       {/* JOBB OSZLOP – Mezők + poszter feltöltés */}
-      <div className="space-y-4">
+      <div className="col-12 col-md-7">
+
         {error && <div className="alert alert-danger">{error}</div>}
 
-        <div>
-          <label className="block font-medium mb-1">Megnevezés *</label>
+        <div className="mb-3">
+          <label className="form-label">Megnevezés *</label>
           <input
-            className="border rounded w-full p-2"
+            className="form-control"
             placeholder="Pl. Fiatalok lelkigyakorlata"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -160,10 +158,10 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
           />
         </div>
 
-        <div>
-          <label className="block font-medium mb-1">Leírás *</label>
+        <div className="mb-3">
+          <label className="form-label">Leírás *</label>
           <textarea
-            className="border rounded w-full p-2"
+            className="form-control"
             rows={4}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -171,20 +169,20 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
           />
         </div>
 
-        <div>
-          <label className="block font-medium mb-1">Helyszín *</label>
+        <div className="mb-3">
+          <label className="form-label">Helyszín *</label>
           <input
-            className="border rounded w-full p-2"
+            className="form-control"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             required
           />
         </div>
 
-        <div>
-          <label className="block font-medium mb-1">Célcsoport *</label>
+        <div className="mb-3">
+          <label className="form-label">Célcsoport *</label>
           <select
-            className="border rounded w-full p-2"
+            className="form-select"
             value={targetGroup}
             onChange={(e) => setTargetGroup(e.target.value)}
             required
@@ -201,59 +199,57 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
           </select>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block font-medium mb-1">Kezdés *</label>
+        <div className="row g-3">
+          <div className="col-12 col-md-6">
+            <label className="form-label">Kezdés *</label>
             <input
               type="datetime-local"
-              className="border rounded w-full p-2"
+              className="form-control"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               required
             />
           </div>
-          <div>
-            <label className="block font-medium mb-1">Befejezés</label>
+          <div className="col-12 col-md-6">
+            <label className="form-label">Befejezés</label>
             <input
               type="datetime-local"
-              className="border rounded w-full p-2"
+              className="form-control"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
             />
           </div>
         </div>
 
-        <div>
-          <label className="block font-medium mb-1">Kapcsolattartó *</label>
+        <div className="mb-3 mt-3">
+          <label className="form-label">Kapcsolattartó *</label>
           <input
-            className="border rounded w-full p-2"
+            className="form-control"
             value={contact}
             onChange={(e) => setContact(e.target.value)}
             required
           />
         </div>
 
-        <div>
-          <label className="block font-medium mb-1">Szervező közösség</label>
+        <div className="mb-3">
+          <label className="form-label">Szervező közösség</label>
           <select
-            className="border rounded w-full p-2"
+            className="form-select"
             value={communityId}
             onChange={(e) => setCommunityId(e.target.value)}
           >
             <option value="">Kezdd el írni a közösség nevét…</option>
             {communities.map((c) => (
-              <option key={c.id} value={String(c.id)}>
-                {c.name}
-              </option>
+              <option key={c.id} value={String(c.id)}>{c.name}</option>
             ))}
           </select>
         </div>
 
-        <div>
-          <label className="block font-medium mb-1">Jelentkezési link *</label>
+        <div className="mb-3">
+          <label className="form-label">Jelentkezési link *</label>
           <input
             type="url"
-            className="border rounded w-full p-2"
+            className="form-control"
             placeholder="Weboldal címe vagy e-mail cím"
             value={registrationLink}
             onChange={(e) => setRegistrationLink(e.target.value)}
@@ -261,14 +257,14 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
           />
         </div>
 
-        {/* POSZTER FELTÖLTÉS */}
-        <div className="border rounded p-3 bg-gray-50">
-          <label className="block font-medium mb-2">Poszter feltöltése (opcionális)</label>
-          <div className="flex items-center gap-2">
-            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onPosterChange} />
+        {/* Poszter feltöltés */}
+        <div className="mb-3 border rounded p-3 bg-light">
+          <label className="form-label">Poszter feltöltése (opcionális)</label>
+          <div className="d-flex align-items-center gap-2">
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onPosterChange} className="form-control" />
             <button
               type="button"
-              className="px-3 py-2 rounded border"
+              className="btn btn-outline-secondary"
               disabled={!posterFile || posterUploading}
               onClick={async () => {
                 try { await uploadPoster(posterFile); }
@@ -280,7 +276,7 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
             {posterUrl && (
               <button
                 type="button"
-                className="px-3 py-2 rounded border"
+                className="btn btn-outline-danger"
                 onClick={() => { setPosterUrl(""); setPosterPreview(""); setPosterFile(null); }}
                 title="Poszter eltávolítása"
               >
@@ -288,23 +284,18 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
               </button>
             )}
           </div>
-          <p className="text-sm text-gray-500 mt-2">
+          <small className="text-muted d-block mt-2">
             Ajánlott: 1200×630 (megosztáshoz), &lt; 5 MB, JPG/PNG/WebP.
-          </p>
+          </small>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <button type="button" className="px-4 py-2 rounded border" onClick={onCancel}>
-            Mégsem
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 rounded bg-blue-600 text-white"
-            disabled={saving || posterUploading}
-          >
+        <div className="d-flex justify-content-end gap-2">
+          <button type="button" className="btn btn-secondary" onClick={onCancel}>Mégsem</button>
+          <button type="submit" className="btn btn-primary" disabled={saving || posterUploading}>
             {saving ? "Hozzáadás…" : "Hozzáadás"}
           </button>
         </div>
+
       </div>
     </div>
   </form>
