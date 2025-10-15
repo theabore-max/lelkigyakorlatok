@@ -1,206 +1,315 @@
-// src/components/AddEventForm.js
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
-import addEventImage from "../assets/addevent.jpg";
-import "./AddEventForm.css";
 
-export default function AddEventForm({ user, onEventAdded }) {
+const STORAGE_BUCKET = "event-images"; // Storage → Buckets (public)
+
+export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
+  // űrlap mezők
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
   const [targetGroup, setTargetGroup] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [contact, setContact] = useState("");
-  const [community, setCommunity] = useState("");
-  const [communitySuggestions, setCommunitySuggestions] = useState([]);
-  const [communities, setCommunities] = useState([]);
+  const [communityId, setCommunityId] = useState("");
   const [registrationLink, setRegistrationLink] = useState("");
-  const [location, setLocation] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const wrapperRef = useRef(null);
+
+  // közösség lista
+  const [communities, setCommunities] = useState([]);
+
+  // poszter
+  const [posterFile, setPosterFile] = useState(null);
+  const [posterPreview, setPosterPreview] = useState("");
+  const [posterUploading, setPosterUploading] = useState(false);
+  const [posterUrl, setPosterUrl] = useState(null);
+
+  // egyéb
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const targetGroups = [
-    "Fiatalok",
-    "Mindenki",
-    "Idősek",
-    "Fiatal házasok",
-    "Érett házasok",
-    "Jegyesek",
-    "Tinédzserek",
-    "Családok",
-  ];
-
-  // Közösségek lekérése
+  // közösségek betöltése
   useEffect(() => {
-    const fetchCommunities = async () => {
-      const { data, error } = await supabase.from("communities").select("*");
-      if (!error) setCommunities(data);
-    };
-    fetchCommunities();
+    (async () => {
+      const { data, error } = await supabase.from("communities").select("id,name").order("name");
+      if (!error && Array.isArray(data)) setCommunities(data);
+    })();
   }, []);
 
-  // Kattintás kívülről bezárja a javaslatlistát
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  // poszter validáció
+  function validatePosterFile(file) {
+    if (!file) return null;
+    const MAX_MB = 5;
+    if (file.size > MAX_MB * 1024 * 1024) return `A poszter túl nagy (${MAX_MB}MB max).`;
+    if (!/^image\/(jpeg|jpg|png|webp)$/i.test(file.type)) return "Csak JPG/PNG/WebP engedélyezett.";
+    return null;
+  }
 
-  const handleCommunityChange = (e) => {
-    const value = e.target.value;
-    setCommunity(value);
+  // poszter feltöltése Storage-ba (insert előtt)
+  async function uploadPoster(file) {
+    if (!file) return null;
+    const v = validatePosterFile(file);
+    if (v) throw new Error(v);
 
-    if (!value) {
-      setCommunitySuggestions([]);
-      setShowSuggestions(false);
-      return;
+    setPosterUploading(true);
+    try {
+      const clean = file.name.replace(/\s+/g, "-").toLowerCase();
+      const path = `posters/new/${Date.now()}_${clean}`;
+
+      const { error: upErr } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(path, file, {
+          upsert: true,
+          cacheControl: "31536000",
+          contentType: file.type || "image/*",
+        });
+      if (upErr) throw upErr;
+
+      const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+      const url = pub?.publicUrl || null;
+      if (!url) throw new Error("Nem sikerült publikus URL-t előállítani a poszterhez.");
+      setPosterUrl(url);
+      return url;
+    } finally {
+      setPosterUploading(false);
     }
+  }
 
-    const suggestions = communities
-      .filter((c) => c.name.toLowerCase().includes(value.toLowerCase()))
-      .map((c) => c.name);
-    setCommunitySuggestions(suggestions);
-    setShowSuggestions(true);
+  // poszter input kezelése
+  const onPosterChange = (e) => {
+    const f = e.target.files?.[0] || null;
+    setPosterFile(f);
+    setPosterUrl(null);
+    setPosterPreview(f ? URL.createObjectURL(f) : "");
   };
 
-  const handleCommunitySelect = (name) => {
-    setCommunity(name);
-    setShowSuggestions(false);
-  };
-
+  // mentés
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+    setSaving(true);
 
-    if (!title || !targetGroup || !startDate || !contact || !registrationLink) {
-      alert("Kérlek töltsd ki a kötelező mezőket!");
-      return;
-    }
+    try {
+      let finalPosterUrl = posterUrl;
 
-    let communityId = null;
-    const existing = communities.find(
-      (c) => c.name.toLowerCase() === community.toLowerCase()
-    );
-    if (existing) {
-      communityId = existing.id;
-    } else if (community.trim() !== "") {
-      const { data: newCommunity, error: insertError } = await supabase
-        .from("communities")
-        .insert([{ name: community }])
-        .select();
-      if (insertError) {
-        alert("Hiba a közösség létrehozásakor: " + insertError.message);
-        return;
+      // ha kiválasztottak képet, de még nincs feltöltve, töltsük fel
+      if (posterFile && !finalPosterUrl) {
+        finalPosterUrl = await uploadPoster(posterFile);
       }
-      communityId = newCommunity[0].id;
-    }
 
-    const { error } = await supabase.from("events").insert([
-      {
+      const payload = {
         title,
         description,
-		location,
-        target_group: targetGroup,
-        start_date: startDate,
-        end_date: endDate,
+        location,
+        target_group: targetGroup || "Mindenki",
+        start_date: startDate ? new Date(startDate).toISOString() : null,
+        end_date: endDate ? new Date(endDate).toISOString() : null,
         contact,
-        community_id: communityId,
-        registration_link: registrationLink,
-        created_by: user?.id,
-      },
-    ]);
+        community_id: communityId ? Number(communityId) : null,
+        registration_link: registrationLink || null,
+        poster_url: finalPosterUrl || null,
+        source: "manual",
+        created_by: currentUser?.id || null,
+      };
 
-    if (error) {
-    setError(error.message);
-  } else {
-    setError(null);
-    alert("Esemény sikeresen hozzáadva!");
-    if (onEventAdded) onEventAdded();  // <-- visszalépés a főoldalra
-  }
+      const { data, error } = await supabase.from("events").insert(payload).select("id").single();
+      if (error) throw error;
+
+      // siker
+      setTitle("");
+      setDescription("");
+      setLocation("");
+      setTargetGroup("");
+      setStartDate("");
+      setEndDate("");
+      setContact("");
+      setCommunityId("");
+      setRegistrationLink("");
+      setPosterFile(null);
+      setPosterPreview("");
+      setPosterUrl(null);
+
+      onSuccess && onSuccess(data?.id);
+    } catch (err) {
+      setError(err?.message || "Hiba a mentés közben.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <div className="container mt-4">
-      <h2>Lelkigyakorlat hozzáadása</h2>
-      <form onSubmit={handleSubmit} className="row g-3 mt-2">
-        <div className="col-md-6 d-flex align-items-center justify-content-center">
-          <img src={addEventImage} alt="Lelkigyakorlat" className="img-fluid rounded" />
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && <div className="alert alert-danger">{error}</div>}
+
+      <div>
+        <label className="block font-medium mb-1">Megnevezés *</label>
+        <input
+          className="border rounded w-full p-2"
+          placeholder="Pl. Fiatalok lelkigyakorlata"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">Leírás *</label>
+        <textarea
+          className="border rounded w-full p-2"
+          rows={4}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">Helyszín *</label>
+        <input
+          className="border rounded w-full p-2"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">Célcsoport *</label>
+        <select
+          className="border rounded w-full p-2"
+          value={targetGroup}
+          onChange={(e) => setTargetGroup(e.target.value)}
+          required
+        >
+          <option value="">Válassz célcsoportot</option>
+          <option>Mindenki</option>
+          <option>Fiatalok</option>
+          <option>Idősek</option>
+          <option>Fiatal házasok</option>
+          <option>Érett házasok</option>
+          <option>Jegyesek</option>
+          <option>Tinédzserek</option>
+          <option>Családok</option>
+        </select>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label className="block font-medium mb-1">Kezdés *</label>
+          <input
+            type="datetime-local"
+            className="border rounded w-full p-2"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            required
+          />
         </div>
+        <div>
+          <label className="block font-medium mb-1">Befejezés</label>
+          <input
+            type="datetime-local"
+            className="border rounded w-full p-2"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+        </div>
+      </div>
 
-        <div className="col-md-6">
-          <div className="mb-3">
-            <label className="form-label">Megnevezés *</label>
-            <input type="text" className="form-control" value={title} onChange={e => setTitle(e.target.value)} />
-            <small className="form-text text-muted fst-italic">Pl. Fiatalok lelkigyakorlata</small>
-          </div>
+      <div>
+        <label className="block font-medium mb-1">Kapcsolattartó *</label>
+        <input
+          className="border rounded w-full p-2"
+          value={contact}
+          onChange={(e) => setContact(e.target.value)}
+          required
+        />
+      </div>
 
-          <div className="mb-3">
-            <label className="form-label">Leírás</label>
-            <textarea className="form-control" value={description} onChange={e => setDescription(e.target.value)} />
-          </div>
-		  
-          <div className="mb-3">
-            <label className="form-label">Helyszín *</label>
-            <input type="text" className="form-control" value={location} onChange={e => setLocation(e.target.value)} />
-          </div>
-		  
-          <div className="mb-3">
-            <label className="form-label">Célcsoport *</label>
-            <select className="form-select" value={targetGroup} onChange={e => setTargetGroup(e.target.value)}>
-              <option value="">Válassz célcsoportot</option>
-              {targetGroups.map((tg) => (
-                <option key={tg} value={tg}>{tg}</option>
-              ))}
-            </select>
-          </div>
+      <div>
+        <label className="block font-medium mb-1">Szervező közösség</label>
+        <select
+          className="border rounded w-full p-2"
+          value={communityId}
+          onChange={(e) => setCommunityId(e.target.value)}
+        >
+          <option value="">Kezdd el írni a közösség nevét…</option>
+          {communities.map((c) => (
+            <option key={c.id} value={String(c.id)}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-          <div className="mb-3">
-            <label className="form-label">Kezdés *</label>
-            <input type="datetime-local" className="form-control" value={startDate} onChange={e => setStartDate(e.target.value)} />
-          </div>
+      <div>
+        <label className="block font-medium mb-1">Jelentkezési link *</label>
+        <input
+          type="url"
+          className="border rounded w-full p-2"
+          placeholder="Weboldal címe vagy e-mail cím"
+          value={registrationLink}
+          onChange={(e) => setRegistrationLink(e.target.value)}
+          required
+        />
+      </div>
 
-          <div className="mb-3">
-            <label className="form-label">Befejezés</label>
-            <input type="datetime-local" className="form-control" value={endDate} onChange={e => setEndDate(e.target.value)} />
-          </div>
-
-          <div className="mb-3">
-            <label className="form-label">Kapcsolattartó *</label>
-            <input type="text" className="form-control" value={contact} onChange={e => setContact(e.target.value)} />
-          </div>
-
-          <div className="mb-3 position-relative" ref={wrapperRef}>
-            <label className="form-label">Szervező közösség</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Kezd el írni a közösség nevét..."
-              value={community}
-              onChange={handleCommunityChange}
+      {/* POSZTER FELTÖLTÉS */}
+      <div className="border rounded p-3">
+        <label className="block font-medium mb-2">Poszter (opcionális)</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={onPosterChange}
+          />
+          <button
+            type="button"
+            className="px-3 py-2 rounded border"
+            disabled={!posterFile || posterUploading}
+            onClick={async () => {
+              try {
+                await uploadPoster(posterFile);
+              } catch (e) {
+                setError(e?.message || "Hiba a poszter feltöltésekor.");
+              }
+            }}
+          >
+            {posterUploading ? "Feltöltés…" : "Feltöltés"}
+          </button>
+        </div>
+        {posterPreview && (
+          <div className="mt-3">
+            <img
+              src={posterPreview}
+              alt="Poszter előnézet"
+              className="rounded"
+              style={{ maxHeight: 260 }}
             />
-            <ul className={`list-group position-absolute w-100 shadow-sm suggestions ${showSuggestions ? "show" : ""}`}>
-              {communitySuggestions.map((name) => (
-                <li key={name} className="list-group-item list-group-item-action" onClick={() => handleCommunitySelect(name)}>
-                  {name}
-                </li>
-              ))}
-            </ul>
+            <p className="text-sm text-gray-500 mt-1">
+              Ajánlott: 1200×630 (megosztási előnézethez), &lt; 5MB.
+            </p>
           </div>
-
-          <div className="mb-3">
-            <label className="form-label">Jelentkezési link *</label>
-            <input type="url" className="form-control" value={registrationLink} onChange={e => setRegistrationLink(e.target.value)} />
-            <small className="form-text text-muted fst-italic">Weboldal címe vagy e-mail cím</small>
+        )}
+        {posterUrl && !posterPreview && (
+          <div className="mt-3">
+            <img
+              src={posterUrl}
+              alt="Poszter"
+              className="rounded"
+              style={{ maxHeight: 260 }}
+            />
           </div>
+        )}
+      </div>
 
-          <button type="submit" className="btn btn-primary">Hozzáadás</button>
-          <p className="mt-2"><small className="text-muted">A *-al jelölt mezők kötelezőek</small></p>
-        </div>
-      </form>
-    </div>
+      <div className="flex justify-end gap-2">
+        <button type="button" className="px-4 py-2 rounded border" onClick={onCancel}>
+          Mégsem
+        </button>
+        <button type="submit" className="px-4 py-2 rounded bg-blue-600 text-white" disabled={saving || posterUploading}>
+          {saving ? "Hozzáadás…" : "Hozzáadás"}
+        </button>
+      </div>
+    </form>
   );
 }
