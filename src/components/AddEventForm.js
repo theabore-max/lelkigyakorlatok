@@ -309,4 +309,4 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
     </div>
   </form>
 );
-
+} 
