@@ -3,10 +3,10 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import editEventImage from "../assets/edit-event.jpg";
 
-const STORAGE_BUCKET = "event-images"; // Supabase Storage public bucket (Settings: Storage → Create bucket → public)
+const STORAGE_BUCKET = "event-images"; // Storage → Buckets (public)
 
 export default function EditEventForm({ event, onCancel, onSuccess }) {
-  // Helper: ISO -> datetime-local
+  // ISO -> datetime-local
   const toLocalInput = (val) => {
     if (!val) return "";
     const d = new Date(val);
@@ -16,17 +16,17 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
     )}:${pad(d.getMinutes())}`;
   };
 
-  // Alap állapotok
+  // Állapotok
   const [title, setTitle] = useState(event.title || "");
   const [description, setDescription] = useState(event.description || "");
   const [targetGroup, setTargetGroup] = useState(event.target_group || "");
   const [startDate, setStartDate] = useState(toLocalInput(event.start_date));
   const [endDate, setEndDate] = useState(toLocalInput(event.end_date));
   const [contact, setContact] = useState(event.contact || "");
-  const [communityId, setCommunityId] = useState(""); // mindig string
+  const [communityId, setCommunityId] = useState("");
   const [registrationLink, setRegistrationLink] = useState(event.registration_link || "");
 
-  // ÚJ: poszter mezők
+  // Poszter
   const [posterUrl, setPosterUrl] = useState(event.poster_url || "");
   const [posterFile, setPosterFile] = useState(null);
   const [posterUploading, setPosterUploading] = useState(false);
@@ -35,25 +35,44 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // A közösség előválasztása: community_id vagy a join-olt communities.id
+  // Kezdeti közösség
   useEffect(() => {
     const initial = event?.community_id ?? event?.communities?.id ?? "";
     setCommunityId(initial ? String(initial) : "");
   }, [event]);
 
-  // Közösségek betöltése
+  // Közösségek lekérés
   useEffect(() => {
     const fetchCommunities = async () => {
-      const { data, error } = await supabase.from("communities").select("id,name").order("name");
+      const { data, error } = await supabase
+        .from("communities")
+        .select("id,name")
+        .order("name");
       if (!error && Array.isArray(data)) setCommunities(data);
     };
     fetchCommunities();
   }, []);
 
-  // Poszter feltöltése Supabase Storage-ba
+  // Fájl-validáció (opcionális: max 5MB)
+  function validatePosterFile(file) {
+    if (!file) return null;
+    const MAX_MB = 5;
+    if (file.size > MAX_MB * 1024 * 1024) {
+      return `A poszter túl nagy (${MAX_MB}MB a maximum).`;
+    }
+    if (!/^image\/(jpeg|jpg|png|webp)$/i.test(file.type)) {
+      return "Csak JPG/PNG/WebP kép tölthető fel.";
+    }
+    return null;
+  }
+
+  // Feltöltés Storage-ba
   async function uploadPoster(file) {
     if (!file) return null;
     if (!event?.id) throw new Error("Hiányzik az esemény azonosítója (event.id).");
+
+    const v = validatePosterFile(file);
+    if (v) throw new Error(v);
 
     setPosterUploading(true);
     try {
@@ -64,7 +83,7 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
         .from(STORAGE_BUCKET)
         .upload(path, file, {
           upsert: true,
-          cacheControl: "31536000", // 1 év
+          cacheControl: "31536000",
           contentType: file.type || "image/*",
         });
 
@@ -87,7 +106,7 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
     setSaving(true);
 
     try {
-      // ha a user most választott fájlt, előbb feltöltjük
+      // ha épp új fájl van kiválasztva, előbb töltsük fel
       if (posterFile) {
         await uploadPoster(posterFile);
       }
@@ -96,13 +115,12 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
         title,
         description,
         target_group: targetGroup,
-        // datetime-local -> ISO
         start_date: startDate ? new Date(startDate).toISOString() : null,
         end_date: endDate ? new Date(endDate).toISOString() : null,
         contact,
         community_id: communityId ? Number(communityId) : null,
         registration_link: registrationLink || null,
-        poster_url: posterUrl || null, // ÚJ mező mentése
+        poster_url: posterUrl || null, // ← mentjük
       };
 
       const { data, error } = await supabase
@@ -116,13 +134,12 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
         setError(error.message);
         return;
       }
-
       if (!data) {
-        setError("A frissítés nem hajtódott végre (0 sor). Lehet, hogy nincs jogosultságod.");
+        setError("A frissítés nem hajtódott végre (0 sor).");
         return;
       }
 
-      // Siker: zárjuk a modalt és frissítsük a listát a szülőben
+      // siker → szülőben zárd a modalt és frissíts
       onSuccess && onSuccess();
     } catch (err) {
       setError(err?.message || "Hiba mentés közben.");
@@ -134,7 +151,7 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
   return (
     <div className="container mt-4">
       <div className="row">
-        {/* Bal oldali kép */}
+        {/* Bal oldal: illusztráció + poszter preview */}
         <div className="col-md-6 mb-3 mb-md-0">
           <img
             src={editEventImage}
@@ -142,7 +159,6 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
             className="img-fluid rounded"
           />
 
-          {/* Poszter előnézet */}
           {posterUrl && (
             <div className="mt-3">
               <small className="text-muted d-block mb-1">Jelenlegi poszter:</small>
@@ -157,7 +173,7 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
           )}
         </div>
 
-        {/* Jobb oldali űrlap */}
+        {/* Jobb oldal: űrlap */}
         <div className="col-md-6">
           <h2 className="h4 mb-3">Esemény szerkesztése</h2>
           {error && <div className="alert alert-danger">{error}</div>}
@@ -194,8 +210,8 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
                 required
               >
                 <option value="">Válassz célcsoportot</option>
-                <option value="Fiatalok">Fiatalok</option>
                 <option value="Mindenki">Mindenki</option>
+                <option value="Fiatalok">Fiatalok</option>
                 <option value="Idősek">Idősek</option>
                 <option value="Fiatal házasok">Fiatal házasok</option>
                 <option value="Érett házasok">Érett házasok</option>
@@ -266,13 +282,13 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
               />
             </div>
 
-            {/* ÚJ: Poszter feltöltése */}
+            {/* Poszter feltöltés */}
             <div className="mb-3">
               <label className="form-label">Poszter (plakát) feltöltése</label>
               <div className="d-flex align-items-center gap-2">
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/webp"
                   className="form-control"
                   onChange={(e) => setPosterFile(e.target.files?.[0] || null)}
                 />
@@ -305,7 +321,7 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
                 )}
               </div>
               <div className="form-text">
-                Ajánlott: álló arány (pl. A4), méret &lt; 2 MB. Feltöltés után a kártya képe nagyítható lesz.
+                Ajánlott: álló arány (pl. A4), &lt; 5 MB. Feltöltés után a kép nagyítható lesz.
               </div>
             </div>
 
