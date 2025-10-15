@@ -124,23 +124,20 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-6">
-      {/* BAL OLDALI KÉP */}
-      <div className="md:w-1/3 w-full flex flex-col items-center justify-start">
-        <div className="border rounded-md overflow-hidden shadow-sm bg-gray-50 w-full">
-        <img
-		  src={
-			posterPreview ||
-			posterUrl ||
-			(targetGroup ? getFallbackImage(targetGroup) : addEventImage)
-		  }
-		  alt="Esemény képe"
-		  className="w-full h-64 object-cover"
-		/>
-        </div>
-        <p className="text-sm text-gray-500 mt-2">
-          Illusztráció / poszter előnézet
-        </p>
-      </div>
+		 {/* BAL OLDALI KÉP – fix magasságú előnézet */}
+		<div className="md:w-1/3 w-full flex flex-col items-center justify-start">
+		  <div
+			className="border rounded-md overflow-hidden shadow-sm bg-gray-50 w-full"
+			style={{ height: 260 }}  // <- fix előnézet magasság
+		  >
+			<img
+			  src={posterPreview || posterUrl || (targetGroup ? getFallbackImage(targetGroup) : addEventImage)}
+			  alt="Esemény képe"
+			  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+			/>
+		  </div>
+		  <p className="text-sm text-gray-500 mt-2">Illusztráció / poszter előnézet</p>
+		</div>
 
       {/* JOBB OLDALI ŰRLAP */}
       <div className="md:w-2/3 w-full space-y-4">
@@ -259,26 +256,41 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
         </div>
 
         {/* POSZTER FELTÖLTÉS JOBB OLDALON */}
-        <div className="border rounded p-3 bg-gray-50">
-          <label className="block font-medium mb-2">Poszter feltöltése</label>
-          <div className="flex items-center gap-2">
-            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onPosterChange} />
-            <button
-              type="button"
-              className="px-3 py-2 rounded border"
-              disabled={!posterFile || posterUploading}
-              onClick={async () => {
-                try {
-                  await uploadPoster(posterFile);
-                } catch (e) {
-                  setError(e?.message || "Hiba a poszter feltöltésekor.");
-                }
-              }}
-            >
-              {posterUploading ? "Feltöltés…" : "Feltöltés"}
-            </button>
-          </div>
-        </div>
+       <div className="border rounded p-3 bg-gray-50">
+  <label className="block font-medium mb-2">Poszter feltöltése</label>
+  <div className="flex items-center gap-2">
+    <input
+      type="file"
+      accept="image/png,image/jpeg,image/webp"
+      onChange={onPosterChange}
+    />
+    <button
+      type="button"
+      className="px-3 py-2 rounded border"
+      disabled={!posterFile || posterUploading}
+      onClick={async () => {
+        try { await uploadPoster(posterFile); }
+        catch (e) { setError(e?.message || "Hiba a poszter feltöltésekor."); }
+      }}
+    >
+      {posterUploading ? "Feltöltés…" : "Feltöltés"}
+    </button>
+    {posterUrl && (
+      <button
+        type="button"
+        className="px-3 py-2 rounded border"
+        onClick={() => { setPosterUrl(""); setPosterPreview(""); setPosterFile(null); }}
+        title="Poszter eltávolítása"
+      >
+        Eltávolítás
+      </button>
+    )}
+  </div>
+  <p className="text-sm text-gray-500 mt-2">
+    Ajánlott: 1200×630 (megosztáshoz), &lt; 5 MB, JPG/PNG/WebP.
+  </p>
+</div>
+
 
         <div className="flex justify-end gap-2">
           <button type="button" className="px-4 py-2 rounded border" onClick={onCancel}>
