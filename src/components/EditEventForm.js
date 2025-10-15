@@ -5,6 +5,15 @@ import editEventImage from "../assets/edit-event.jpg";
 
 const STORAGE_BUCKET = "event-images"; // Storage → Buckets (public)
 
+// fájlnév tisztítás (ékezetek nélkül, csak [a-z0-9._-])
+const sanitizeFilename = (name) =>
+  (name || "")
+    .toLowerCase()
+    .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
 export default function EditEventForm({ event, onCancel, onSuccess }) {
   // ISO -> datetime-local
   const toLocalInput = (val) => {
@@ -53,7 +62,7 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
     fetchCommunities();
   }, []);
 
-  // Fájl-validáció (opcionális: max 5MB)
+  // Fájl-validáció
   function validatePosterFile(file) {
     if (!file) return null;
     const MAX_MB = 5;
@@ -76,7 +85,7 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
 
     setPosterUploading(true);
     try {
-      const cleanName = file.name.replace(/\s+/g, "-").toLowerCase();
+      const cleanName = sanitizeFilename(file.name) || `poster-${Date.now()}.png`;
       const path = `posters/${event.id}/${Date.now()}_${cleanName}`;
 
       const { error: upErr } = await supabase.storage
@@ -106,7 +115,6 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
     setSaving(true);
 
     try {
-      // ha épp új fájl van kiválasztva, előbb töltsük fel
       if (posterFile) {
         await uploadPoster(posterFile);
       }
@@ -120,7 +128,7 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
         contact,
         community_id: communityId ? Number(communityId) : null,
         registration_link: registrationLink || null,
-        poster_url: posterUrl || null, // ← mentjük
+        poster_url: posterUrl || null,
       };
 
       const { data, error } = await supabase
@@ -139,7 +147,6 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
         return;
       }
 
-      // siker → szülőben zárd a modalt és frissíts
       onSuccess && onSuccess();
     } catch (err) {
       setError(err?.message || "Hiba mentés közben.");
@@ -343,3 +350,4 @@ export default function EditEventForm({ event, onCancel, onSuccess }) {
     </div>
   );
 }
+
