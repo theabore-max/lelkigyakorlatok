@@ -33,7 +33,7 @@ function getFallbackImage(group) {
   return `https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/${file}`;
 }
 
-export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
+export default function AddEventForm({ currentUser, onCancel, onSuccess, goHome }) {
   // űrlapmezők
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -152,15 +152,10 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
 
     // értesítsük a szülőt (ha van), majd navigáció vissza a listára
     onSuccess && onSuccess(data?.id);
-	setTimeout(() => {
-  if (typeof window !== "undefined") {
-    if (window.history.length > 1) {
-      window.history.back();      // vissza az előző oldalra (ált. a lista)
-    } else {
-      window.location.assign("/"); // vagy a listád útvonala
-    }
-  }
-}, 0);
++ // SPA visszalépés: a szülő intézi az oldalváltást
+if (typeof goHome === "function") {
+   goHome();              // ← csak állapotváltás, nincs reload
+}
 
     return; // fontos: ne fusson tovább
 	
