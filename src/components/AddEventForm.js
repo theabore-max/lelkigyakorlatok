@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import addEventImage from "../assets/addevent.jpg"; // alap illusztráció
-import { useNavigate } from "react-router-dom";
 
 
 
@@ -37,7 +36,6 @@ function getFallbackImage(group) {
 export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
   // űrlapmezők
   const [title, setTitle] = useState("");
-  const navigate = useNavigate();
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [targetGroup, setTargetGroup] = useState("");
@@ -154,20 +152,15 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
 
     // értesítsük a szülőt (ha van), majd navigáció vissza a listára
     onSuccess && onSuccess(data?.id);
-	navigate("/", { replace: true });   // ← SPA navigáció, NINCS reload
-  
-  // Biztos visszalépés:
-    // - ha van böngésző előzmény: vissza
-    // - különben: főoldal
- //   setTimeout(() => {
- //     if (typeof window !== "undefined") {
-  //      if (window.history.length > 1) {
-  //        window.history.back();
-  //      } else {
-   //       window.location.replace("/"); // a listád útvonala
-  //      }
-  //    }
- //   }, 0);
+	setTimeout(() => {
+  if (typeof window !== "undefined") {
+    if (window.history.length > 1) {
+      window.history.back();      // vissza az előző oldalra (ált. a lista)
+    } else {
+      window.location.assign("/"); // vagy a listád útvonala
+    }
+  }
+}, 0);
 
     return; // fontos: ne fusson tovább
 	
