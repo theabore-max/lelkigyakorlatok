@@ -1,40 +1,69 @@
 // App.js
-import React, { useState } from "react";
-import { Navbar, Nav, Container } from "react-bootstrap";
+import React, { useEffect, useState, useCallback } from "react";
+import { Container } from "react-bootstrap";
 import PageContent from "./components/PageContent";
+import { supabase } from "./supabaseClient";
 
 function App() {
   const [currentPage, setCurrentPage] = useState("home");
 
+  // Supabase auth állapot
+  const [authLoading, setAuthLoading] = useState(true);
+  const [user, setUser] = useState(null);
+
+  // Kezdeti session beolvasás + feliratkozás változásokra
+  useEffect(() => {
+    let alive = true;
+
+    // 1) jelenlegi session
+    supabase.auth.getSession().then(({ data }) => {
+      if (!alive) return;
+      setUser(data?.session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    // 2) változások figyelése (signin/signout/token refresh)
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!alive) return;
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      alive = false;
+      sub?.subscription?.unsubscribe();
+    };
+  }, []);
+
+  // (opcionális) kijelentkezés segédfüggvény
+  const handleSignOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  }, []);
+
+  if (authLoading) {
+    // amíg a session tölt, ne rendereljünk "Belépés" állapotot
+    return (
+      <Container className="mt-4">
+        <div className="text-muted">Bejelentkezés ellenőrzése…</div>
+      </Container>
+    );
+  }
+
   return (
     <>
-      {/* Navigációs sáv */}
-     {/*  <Navbar bg="light" expand="lg">
-        <Container>
-          <Navbar.Brand
-            onClick={() => setCurrentPage("home")}
-            style={{ cursor: "pointer" }}
-          >
-            Katolikus Lelkigyakorlat-kereső
-          </Navbar.Brand>
-          <Nav className="me-auto">
-            <Nav.Link onClick={() => setCurrentPage("about")}>
-              Az oldal célja
-            </Nav.Link>
-            <Nav.Link onClick={() => setCurrentPage("contact")}>
-              Kapcsolat
-            </Nav.Link>
-            <Nav.Link onClick={() => setCurrentPage("login")}>Belépés</Nav.Link>
-          </Nav>
-        </Container>
-      </Navbar>*/}
-
-      {/* PageContent megjeleníti az aktuális oldalt */}
+      {/* Ha később vissza akarod hozni a Navbar-t, ide teheted;
+          a user itt már biztosan be van olvasva */}
       <Container className="mt-4">
-        <PageContent currentPage={currentPage} />
+        <PageContent
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          user={user}
+          onSignOut={handleSignOut}
+        />
       </Container>
     </>
   );
 }
 
 export default App;
+

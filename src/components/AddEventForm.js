@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import addEventImage from "../assets/addevent.jpg"; // alap illusztráció
+import { useNavigate } from "react-router-dom";
+
+const navigate = useNavigate();
+
 
 const STORAGE_BUCKET = "event-images";
 
@@ -150,21 +154,23 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
 
     // értesítsük a szülőt (ha van), majd navigáció vissza a listára
     onSuccess && onSuccess(data?.id);
-
-    // Biztos visszalépés:
+	navigate("/", { replace: true });   // ← SPA navigáció, NINCS reload
+  
+  // Biztos visszalépés:
     // - ha van böngésző előzmény: vissza
     // - különben: főoldal
-    setTimeout(() => {
-      if (typeof window !== "undefined") {
-        if (window.history.length > 1) {
-          window.history.back();
-        } else {
-          window.location.replace("/"); // a listád útvonala
-        }
-      }
-    }, 0);
+ //   setTimeout(() => {
+ //     if (typeof window !== "undefined") {
+  //      if (window.history.length > 1) {
+  //        window.history.back();
+  //      } else {
+   //       window.location.replace("/"); // a listád útvonala
+  //      }
+  //    }
+ //   }, 0);
 
     return; // fontos: ne fusson tovább
+	
   } catch (err) {
     setError(err?.message || "Hiba a mentés közben.");
   } finally {
