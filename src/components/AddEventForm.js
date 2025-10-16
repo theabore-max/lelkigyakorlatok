@@ -114,68 +114,63 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (saving) return;      // ← dupla küldés ellen
-    setError(null);
-    setSaving(true);
+  e.preventDefault();
+  if (saving) return;      // dupla küldés ellen
+  setError(null);
+  setSaving(true);
 
-    try {
-      let finalPosterUrl = posterUrl;
-      if (posterFile && !posterUrl) {
-        finalPosterUrl = await uploadPoster(posterFile);
-      }
-
-      const payload = {
-        title,
-        description,
-        location,
-        target_group: targetGroup || "Mindenki",
-        start_date: startDate ? new Date(startDate).toISOString() : null,
-        end_date: endDate ? new Date(endDate).toISOString() : null,
-        contact,
-        community_id: communityId ? Number(communityId) : null,
-        registration_link: registrationLink || null,
-        poster_url: finalPosterUrl || null,
-
-        // LÉNYEG:
-        source: "manual",
-        created_by: authUser?.id || currentUser?.id || null,
-      };
-
-      const { data, error } = await supabase.from("events").insert(payload).select("id").single();
-      if (error) throw error;
-
-      // siker → szülő zárja a modalt és frissít
-      const { data, error } = await supabase
-		  .from("events")
-		  .insert(payload)
-		  .select("id")
-		  .single();
-		if (error) throw error;
-
-		// 1) Szülő értesítése (ha lenne modalos verziód)
-		onSuccess && onSuccess(data?.id);
-
-		// 2) Biztos visszalépés:
-		// - ha van böngésző history: lépjünk vissza (pl. az űrlap egy külön oldal volt)
-		// - különben menjünk a főoldalra ("/")
-		setTimeout(() => {
-		  if (typeof window !== "undefined") {
-			if (window.history.length > 1) {
-			  window.history.back();
-			} else {
-			  window.location.replace("/"); // vagy a listád útvonala
-			}
-		  }
-		}, 0);
-
-		return;
-    } catch (err) {
-      setError(err?.message || "Hiba a mentés közben.");
-    } finally {
-      setSaving(false);
+  try {
+    let finalPosterUrl = posterUrl;
+    if (posterFile && !posterUrl) {
+      finalPosterUrl = await uploadPoster(posterFile);
     }
-  };
+
+    const payload = {
+      title,
+      description,
+      location,
+      target_group: targetGroup || "Mindenki",
+      start_date: startDate ? new Date(startDate).toISOString() : null,
+      end_date: endDate ? new Date(endDate).toISOString() : null,
+      contact,
+      community_id: communityId ? Number(communityId) : null,
+      registration_link: registrationLink || null,
+      poster_url: finalPosterUrl || null,
+      source: "manual",
+      created_by: authUser?.id || currentUser?.id || null,
+    };
+
+    // ➜ EGY insert, EGY destructuring
+    const { data, error } = await supabase
+      .from("events")
+      .insert(payload)
+      .select("id")
+      .single();
+    if (error) throw error;
+
+    // értesítsük a szülőt (ha van), majd navigáció vissza a listára
+    onSuccess && onSuccess(data?.id);
+
+    // Biztos visszalépés:
+    // - ha van böngésző előzmény: vissza
+    // - különben: főoldal
+    setTimeout(() => {
+      if (typeof window !== "undefined") {
+        if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          window.location.replace("/"); // a listád útvonala
+        }
+      }
+    }, 0);
+
+    return; // fontos: ne fusson tovább
+  } catch (err) {
+    setError(err?.message || "Hiba a mentés közben.");
+  } finally {
+    setSaving(false);
+  }
+};
 
   const onPosterChange = (e) => {
     const f = e.target.files?.[0] || null;
