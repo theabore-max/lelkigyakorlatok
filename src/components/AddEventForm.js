@@ -152,7 +152,7 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess, goHome 
 
     // értesítsük a szülőt (ha van), majd navigáció vissza a listára
     onSuccess && onSuccess(data?.id);
-+ // SPA visszalépés: a szülő intézi az oldalváltást
+ // SPA visszalépés: a szülő intézi az oldalváltást
 if (typeof goHome === "function") {
    goHome();              // ← csak állapotváltás, nincs reload
 }
