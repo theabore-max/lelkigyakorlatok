@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import addEventImage from "../assets/addevent.jpg"; // alap illusztráció
+import { useNavigate } from "react-router-dom";
 
 
 
