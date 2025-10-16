@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import addEventImage from "../assets/addevent.jpg"; // alap illusztráció
-import { useNavigate } from "react-router-dom";
 
-const navigate = useNavigate();
 
 
 const STORAGE_BUCKET = "event-images";
@@ -38,6 +36,7 @@ function getFallbackImage(group) {
 export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
   // űrlapmezők
   const [title, setTitle] = useState("");
+  const navigate = useNavigate();
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [targetGroup, setTargetGroup] = useState("");
