@@ -146,7 +146,30 @@ export default function AddEventForm({ currentUser, onCancel, onSuccess }) {
       if (error) throw error;
 
       // siker → szülő zárja a modalt és frissít
-      onSuccess && onSuccess(data?.id);
+      const { data, error } = await supabase
+		  .from("events")
+		  .insert(payload)
+		  .select("id")
+		  .single();
+		if (error) throw error;
+
+		// 1) Szülő értesítése (ha lenne modalos verziód)
+		onSuccess && onSuccess(data?.id);
+
+		// 2) Biztos visszalépés:
+		// - ha van böngésző history: lépjünk vissza (pl. az űrlap egy külön oldal volt)
+		// - különben menjünk a főoldalra ("/")
+		setTimeout(() => {
+		  if (typeof window !== "undefined") {
+			if (window.history.length > 1) {
+			  window.history.back();
+			} else {
+			  window.location.replace("/"); // vagy a listád útvonala
+			}
+		  }
+		}, 0);
+
+		return;
     } catch (err) {
       setError(err?.message || "Hiba a mentés közben.");
     } finally {
