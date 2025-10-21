@@ -23,7 +23,11 @@ export default function EventList({ user }) {
     "Fiatalok", "Mindenki", "Idősek", "Fiatal házasok",
     "Érett házasok", "Jegyesek", "Tinédzserek", "Családok",
   ];
+  const isMobileUA = typeof navigator !== "undefined"
+  ? /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+  : false;
 
+const canWebShare = isMobileUA && typeof navigator !== "undefined" && !!navigator.share;
   useEffect(() => { fetchEvents(); }, []);
 
   async function fetchEvents() {
@@ -78,79 +82,80 @@ export default function EventList({ user }) {
 
   // --- KATEGÓRIA-ALAPÚ FALLBACK KÉPEK ---
   function groupSlug(group = "") {
-    const repl = (s) => s
-      .replaceAll("á","a").replaceAll("é","e").replaceAll("í","i")
-      .replaceAll("ó","o").replaceAll("ö","o").replaceAll("ő","o")
-      .replaceAll("ú","u").replaceAll("ü","u").replaceAll("ű","u");
-    const base = repl((group || "").toLowerCase()).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    if (base.includes("fiatal-hazas")) return "hazasok";
-    if (base.includes("erett-hazas"))  return "hazasok";
-    if (base.includes("hazas"))        return "hazasok";
-    if (base.includes("jegyes"))       return "jegyesek";
-    if (base.includes("tinedzs"))      return "tinedzserek";
-    if (base.includes("csalad"))       return "csaladok";
-    if (base.includes("idos"))         return "idosek";
-    if (base.includes("fiatal"))       return "fiatalok";
-    if (base.includes("mindenki"))     return "mindenki";
-    return "general";
-  }
+  const repl = (s) => s
+    .replaceAll("á","a").replaceAll("é","e").replaceAll("í","i")
+    .replaceAll("ó","o").replaceAll("ö","o").replaceAll("ő","o")
+    .replaceAll("ú","u").replaceAll("ü","u").replaceAll("ű","u");
+  const base = repl((group || "").toLowerCase()).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+  if (base.includes("fiatal-hazas")) return "fiatalhazasok"; // ← EZT javítottam
+  if (base.includes("erett-hazas"))  return "eretthazasok";
+  if (base.includes("erett"))        return "eretthazasok";
+  if (base.includes("jegyes"))       return "jegyesek";
+  if (base.includes("tinedzs"))      return "tinedzserek";
+  if (base.includes("csalad"))       return "csaladok";
+  if (base.includes("idos"))         return "idosek";
+  if (base.includes("fiatal"))       return "fiatalok";
+  if (base.includes("mindenki"))     return "mindenki";
+  return "general";
+}
 
   // CSERÉLD A SAJÁT PUBLIC STORAGE URL-JEIDRE:
   const FALLBACKS = {
     fiatalok: [
       "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalok/fiatalok_01.jpg",
       "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalok/fiatalok_02.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalok/fiatalok_03.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalok/fiatalok_04.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalok/fiatalok_05.jpg",	  
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalok/fiatalok_03.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalok/fiatalok_04.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalok/fiatalok_05.jpg",	  
     ],
     jegyesek: [
       "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/jegyesek/jegyesek_01.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/jegyesek/jegyesek_02.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/jegyesek/jegyesek_03.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/jegyesek/jegyesek_02.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/jegyesek/jegyesek_03.jpg",
     ],
     fiatalhazasok: [
       "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalhazasok/fiatalhazasok_01.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalhazasok/fiatalhazasok_02.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalhazasok/fiatalhazasok_03.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalhazasok/fiatalhazasok_04.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalhazasok/fiatalhazasok_02.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalhazasok/fiatalhazasok_03.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/fiatalhazasok/fiatalhazasok_04.jpg",
     ],
-	eretthazasok: [
+    eretthazasok: [
       "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/eretthazasok/eretthazasok_01.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/eretthazasok/eretthazasok_02.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/eretthazasok/eretthazasok_03.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/eretthazasok/eretthazasok_02.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/eretthazasok/eretthazasok_03.jpg",
     ],
     csaladok: [
       "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/csaladok/csaladok_01.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/csaladok/csaladok_02.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/csaladok/csaladok_03.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/csaladok/csaladok_04.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/csaladok/csaladok_02.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/csaladok/csaladok_03.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/csaladok/csaladok_04.jpg",
     ],
     tinedzserek: [
       "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/tinedzserek/tinedzserek_01.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/tinedzserek/tinedzserek_02.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/tinedzserek/tinedzserek_03.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/tinedzserek/tinedzserek_04.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/tinedzserek/tinedzserek_02.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/tinedzserek/tinedzserek_03.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/tinedzserek/tinedzserek_04.jpg",
     ],
     idosek: [
       "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/idosek/idosek_01.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/idosek/idosek_02.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/idosek/idosek_02.jpg",
     ],
     mindenki: [
       "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/mindenki/mindenki_01.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/mindenki/mindenki_02.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/mindenki/mindenki_03.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/mindenki/mindenki_04.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/mindenki/mindenki_05.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/mindenki/mindenki_06.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/mindenki/mindenki_07.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/mindenki/mindenki_02.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/mindenki/mindenki_03.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/mindenki/mindenki_04.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/mindenki/mindenki_05.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/mindenki/mindenki_06.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/mindenki/mindenki_07.jpg",
     ],
     general: [
       "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/general/general_01.jpg",
       "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/general/general_02.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/general/general_03.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/general/general_04.jpg",
-	  "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/general/general_05.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/general/general_03.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/general/general_04.jpg",
+      "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/fallback/general/general_05.jpg",
     ],
   };
 
@@ -176,6 +181,57 @@ export default function EventList({ user }) {
   const CANONICAL_BASE = "https://lelkigyakorlatok.vercel.app";
   const shareUrl = (id) => `${CANONICAL_BASE}/api/share?id=${id}`;
 
+  // ====== ÚJ: Gmail & Web Share API segédek ======
+  const buildEmailSubject = (event) =>
+    `Ajánlott lelkigyakorlat: ${event?.title || "Esemény"}`;
+
+  const buildEmailBody = (event) => {
+    const whenStart = event?.start_date
+      ? new Date(event.start_date).toLocaleString("hu-HU")
+      : "";
+    const whenEnd = event?.end_date
+      ? new Date(event.end_date).toLocaleString("hu-HU")
+      : "";
+    const loc = event?.location ? `\nHelyszín: ${event.location}` : "";
+    const reg = event?.registration_link ? `\nJelentkezés: ${event.registration_link}` : "";
+    const when = whenStart
+      ? `Időpont: ${whenStart}${whenEnd ? ` – ${whenEnd}` : ""}\n`
+      : "";
+    return (
+      `${event?.title || "Esemény"}\n` +
+      when +
+      `${loc}${reg}\n\n` +
+      `Részletek és megosztható oldal:\n${shareUrl(event.id)}`
+    );
+  };
+
+  const buildGmailShare = (event, to = "") => {
+    const su = encodeURIComponent(buildEmailSubject(event));
+    const body = encodeURIComponent(buildEmailBody(event));
+    const toParam = encodeURIComponent(to || "");
+    return `https://mail.google.com/mail/?view=cm&fs=1&to=${toParam}&su=${su}&body=${body}`;
+  };
+
+  const buildMailto = (event, to = "") => {
+    const su = encodeURIComponent(buildEmailSubject(event));
+    const body = encodeURIComponent(buildEmailBody(event));
+    const toParam = encodeURIComponent(to || "");
+    return `mailto:${toParam}?subject=${su}&body=${body}`;
+  };
+
+ 
+  const onNativeShare = async (event) => {
+    try {
+      await navigator.share({
+        title: buildEmailSubject(event),
+        text: buildEmailBody(event),
+        url: shareUrl(event.id),
+      });
+    } catch {
+      // user cancel or unsupported — no-op
+    }
+  };
+
   const IconFacebook = (props) => (
     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...props}>
       <path fill="currentColor" d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.14 8.44 9.94v-7.03H7.9v-2.9h2.54V9.41c0-2.5 1.48-3.9 3.75-3.9 1.09 0 2.24.2 2.24.2v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56v1.87h2.77l-.44 2.9h-2.33V22c4.78-.8 8.44-4.94 8.44-9.94Z"/>
@@ -189,6 +245,22 @@ export default function EventList({ user }) {
   const IconWhatsApp = (props) => (
     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...props}>
       <path fill="currentColor" d="M20.52 3.48A11.86 11.86 0 0 0 12.05 0C5.45 0 .14 5.3.14 11.92c0 2.1.55 4.15 1.61 5.96L0 24l6.28-1.64a12 12 0 0 0 5.76 1.47h.01c6.6 0 11.92-5.31 11.92-11.92 0-3.19-1.24-6.19-3.45-8.43ZM12.05 22a9.99 9.99 0 0 1-5.1-1.4l-.37-.22-3.73.97.99-3.64-.24-.37a10.02 10.02 0 1 1 8.45 4.66Zm5.48-7.43c-.3-.15-1.77-.87-2.05-.96-.27-.1-.47-.15-.67.15-.2.3-.77.95-.94 1.14-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.74-1.64-2.03-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.6-.92-2.18-.24-.58-.49-.5-.67-.5h-.57c-.2 0-.52.07-.8.37-.27.3-1.05 1.02-1.05 2.48 0 1.46 1.08 2.87 1.22 3.07.15.2 2.12 3.23 5.15 4.53.72.31 1.28.49 1.72.63.72.23 1.37.2 1.88.12.58-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35Z"/>
+    </svg>
+  );
+const IconGmail = (props) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...props}>
+    {/* boríték keret */}
+    <rect x="2" y="4" width="20" height="16" rx="2" ry="2"
+          fill="none" stroke="currentColor" strokeWidth="1.8"/>
+    {/* piros "M" */}
+    <path d="M4 8.2 L12 13 L20 8.2" fill="none" stroke="currentColor" strokeWidth="1.8"/>
+    <path d="M6 17 V9.2 L12 13.2 L18 9.2 V17" fill="none" stroke="currentColor" strokeWidth="1.8"/>
+  </svg>
+);
+
+  const IconShareNative = (props) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path fill="currentColor" d="M16 5l-4-4-4 4h3v6h2V5h3zm2 14H6v-7H4v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7h-2v7z"/>
     </svg>
   );
 
@@ -257,17 +329,15 @@ export default function EventList({ user }) {
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); },
     [page, pageSize, filter, sourceFilter, q, month]);
-	
-useEffect(() => {
-  // csak böngészőben
-  if (typeof window === "undefined") return;
-  const params = new URLSearchParams(window.location.search);
-  const eid = params.get("e");
-  if (!eid || !events?.length) return;
 
-  const ev = events.find(x => String(x.id) === String(eid));
-  if (ev) setSelectedEvent(ev);
-}, [events]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const eid = params.get("e");
+    if (!eid || !events?.length) return;
+    const ev = events.find(x => String(x.id) === String(eid));
+    if (ev) setSelectedEvent(ev);
+  }, [events]);
 
   // --- SEO (OG fallback marad) ---
   const pageTitle = filter==="Mindenki"
@@ -281,15 +351,9 @@ useEffect(() => {
   const ogDate  = first ? formatDateRange(first.start_date, first.end_date) : "";
   const ogPlace = first?.location || "";
 
-  // <<< FIX: statikus OG fallback kép
   const OG_FALLBACK = "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/og/og_1.jpg";
+  const ogImage = first?.poster_url ? first.poster_url : OG_FALLBACK;
 
-  // Ha van poszter az első kártyán, azt adhatjuk meg (nem kötelező), különben fix fallback
-  const ogImage = first?.poster_url
-    ? first.poster_url
-    : OG_FALLBACK;
-
-  // --- ikon a célcsoport badge-hez ---
   function iconSvgForGroup(group = "") {
     const g = (group || "").toLowerCase();
     const stroke = "#0f172a", sw = 3.5, fillSoft = "#0f172a";
@@ -299,7 +363,7 @@ useEffect(() => {
     if (g.includes("idős"))   return `<path d="M20 44 C20 28, 44 28, 44 44 C44 50, 20 50, 20 44 Z" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 44 C26 40, 34 40, 44 44" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>`;
     if (g.includes("tinédzs"))return `<path d="M32 16 L24 34 H32 L28 52 L44 28 H36 L40 16 Z" fill="${fillSoft}" />`;
     if (g.includes("fiatal")) return `<path d="M32 18 L36 28 L46 32 L36 36 L32 46 L28 36 L18 32 L28 28 Z" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>`;
-    return `<path d="M20 32 L32 22 L44 32" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/><rect x="22" y="32" width="20" height="18" rx="3" fill="none" stroke="${stroke}" stroke-width="${sw}" /><line x1="32" y1="16" x2="32" y2="22" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"/><line x1="29" y1="19" x2="35" y2="19" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"/>`;
+    return `<path d="M20 32 L32 22 L44 32" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/><rect x="22" y="32" width="20" height="18" rx="3" fill="none" stroke="${stroke}" stroke-width="${sw}" /><line x1="32" y1="16" x2="32" y2="22" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"/><line x1="29" y1="19" x2="35" y1="19" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"/>`;
   }
 
   return (
@@ -456,26 +520,92 @@ useEffect(() => {
                         </div>
 
                         <div className="d-flex align-items-center gap-2 ms-auto">
-                          <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl(event.id))}`}						  
-                             target="_blank" rel="noreferrer" onClick={(e)=>e.stopPropagation()}
-                             className="btn btn-light border rounded-circle p-2 share-btn share-fb"
-                             title="Megosztás Facebookon" aria-label="Megosztás Facebookon"
-                             style={{ width:36, height:36, display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
+                          {/* Natív megosztás (mobil / támogatott böngészők) */}
+                          {canWebShare && (
+							  <button
+								type="button"
+								onClick={(e)=>{ e.stopPropagation(); onNativeShare(event); }}
+								className="btn btn-light border rounded-circle p-2"
+								title="Megosztás (telefon)"
+								aria-label="Megosztás (telefon)"
+								style={{ width:36, height:36, display:"inline-flex", alignItems:"center", justifyContent:"center" }}
+							  >
+								<IconShareNative />
+							  </button>
+							)}
+
+                          {/* Facebook */}
+                          <a
+                            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl(event.id))}`}
+                            target="_blank" rel="noreferrer" onClick={(e)=>e.stopPropagation()}
+                            className="btn btn-light border rounded-circle p-2 share-btn share-fb"
+                            title="Megosztás Facebookon" aria-label="Megosztás Facebookon"
+                            style={{ width:36, height:36, display:"inline-flex", alignItems:"center", justifyContent:"center" }}
+                          >
                             <IconFacebook />
                           </a>
-                          <a href={`mailto:?subject=${encodeURIComponent("Ajánlott lelkigyakorlat")}&body=${encodeURIComponent(`${event.title}\n\n${shareUrl(event.id)}`)}`}
-                             onClick={(e)=>e.stopPropagation()}
-                             className="btn btn-light border rounded-circle p-2 share-btn share-mail"
-                             title="Megosztás e-mailben" aria-label="Megosztás e-mailben"
-                             style={{ width:36, height:36, display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
-                            <IconMail />
-                          </a>
-                          <a href={`https://wa.me/?text=${encodeURIComponent(`${event.title} ${shareUrl(event.id)}`)}`}
-                             target="_blank" rel="noreferrer" onClick={(e)=>e.stopPropagation()}
-                             className="btn btn-light border rounded-circle p-2 share-btn share-wa"
-                             title="Megosztás WhatsAppon" aria-label="Megosztás WhatsAppon"
-                             style={{ width:36, height:36, display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
+
+                          {/* WhatsApp */}
+                          <a
+                            href={`https://wa.me/?text=${encodeURIComponent(`${event.title} ${shareUrl(event.id)}`)}`}
+                            target="_blank" rel="noreferrer" onClick={(e)=>e.stopPropagation()}
+                            className="btn btn-light border rounded-circle p-2 share-btn share-wa"
+                            title="Megosztás WhatsAppon" aria-label="Megosztás WhatsAppon"
+                            style={{ width:36, height:36, display:"inline-flex", alignItems:"center", justifyContent:"center" }}
+                          >
                             <IconWhatsApp />
+                          </a>
+
+                          {/* Gmail (webes compose) */}
+                          <span style={{ position: "relative", display: "inline-block" }}>
+							  <a
+								href={buildGmailShare(event)}
+								target="_blank"
+								rel="noreferrer"
+								onClick={(e)=>e.stopPropagation()}
+								className="btn border rounded-circle p-2"
+								title="Megnyitás Gmailben"
+								aria-label="Megnyitás Gmailben"
+								style={{
+								  width: 36, height: 36,
+								  display: "inline-flex", alignItems: "center", justifyContent: "center",
+								  borderColor: "#ea4335",
+								  color: "#ea4335",
+								  backgroundColor: "#fce8e6",
+								}}
+							  >
+								<IconGmail />
+							  </a>
+
+							  {/* Sarok-badge */}
+							  <span
+								style={{
+								  position: "absolute",
+								  right: -2,
+								  bottom: -2,
+								  background: "#ea4335",
+								  color: "#fff",
+								  borderRadius: 6,
+								  fontSize: 10,
+								  lineHeight: "12px",
+								  padding: "0 4px",
+								  fontWeight: 700,
+								  pointerEvents: "none", // ne blokkolja a kattintást
+								}}
+							  >
+								G
+							  </span>
+							</span>
+
+                          {/* mailto fallback (maradhat) */}
+                          <a
+                            href={buildMailto(event)}
+                            onClick={(e)=>e.stopPropagation()}
+                            className="btn btn-light border rounded-circle p-2 share-btn share-mail"
+                            title="Megosztás emailben" aria-label="Megosztás emailben"
+                            style={{ width:36, height:36, display:"inline-flex", alignItems:"center", justifyContent:"center" }}
+                          >
+                            <IconMail />
                           </a>
                         </div>
                       </div>

@@ -1,11 +1,29 @@
 // src/components/EventList.js
 import React, { useEffect, useState } from "react";
+import { Modal, Button, Pagination, Badge } from "react-bootstrap";
 import { supabase } from "../supabaseClient";
 import headerImage from "../assets/header.jpg";
-import { Modal, Button, Pagination, Badge } from "react-bootstrap";
 import EditEventForm from "./EditEventForm";
 import Seo from "./Seo";
 import "./EventList.css";
+
+/* Partnernek küldhető ID alapú (ajánlott — gyorsabb, egyértelmű) mintakód: 
+
+<iframe
+  src="https://lelkigyakorlatok.vercel.app/?embed=1&communityId=6"
+  style="width:100%;height:700px;border:0;overflow:hidden"
+  loading="lazy">
+</iframe>
+
+*/
+/*Partnernek küldhető Community alapú (ajánlott — gyorsabb, egyértelmű) mintakód
+<iframe
+  src="https://lelkigyakorlatok.vercel.app/?embed=1&community=martineum"
+  style="width:100%;height:700px;border:0;overflow:hidden"
+  loading="lazy">
+</iframe>
+
+*/
 
 /* =========================
    GA4 + UTM segédfüggvények
@@ -24,57 +42,10 @@ const appendUTM = (url, params) => {
 
 const SHARE_CAMPAIGN = "launch";
 
-// --- JSON-LD segéd: egyetlen eventhez
-const buildEventJsonLd = (ev, canonicalBase = "https://lelkigyakorlatok.vercel.app") => {
-  const startISO = ev?.start_date ? new Date(ev.start_date).toISOString() : undefined;
-  const endISO   = ev?.end_date   ? new Date(ev.end_date).toISOString()   : undefined;
-  const url      = `${canonicalBase}/api/share?id=${ev.id}`;
-
-  // képek: poszter -> image_url -> fallback
-  const images = [];
-  if (ev?.poster_url) images.push(ev.poster_url);
-  else if (ev?.image_url) images.push(ev.image_url);
-
-  return {
-    "@context": "https://schema.org",
-    "@type": "Event",
-    "name": ev?.title || "Lelkigyakorlat",
-    "startDate": startISO,
-    ...(endISO ? {"endDate": endISO} : {}),
-    "eventStatus": "https://schema.org/EventScheduled",
-    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
-    "description": (ev?.description || "").slice(0, 1000),
-    ...(images.length ? {"image": images} : {}),
-    "location": {
-      "@type": "Place",
-      "name": ev?.location || "Lelkigyakorlat helyszíne",
-      "address": ev?.location || "Magyarország"
-    },
-    "organizer": {
-      "@type": "Organization",
-      "name": ev?.communities?.name || "Szervező közösség"
-    },
-    "url": url
-  };
-};
-
-// --- JSON-LD: ItemList a lapon látható eventekhez
-const buildItemListJsonLd = (events, canonicalBase = "https://lelkigyakorlatok.vercel.app") => ({
-  "@context": "https://schema.org",
-  "@type": "ItemList",
-  "itemListElement": events.map((ev, i) => ({
-    "@type": "ListItem",
-    "position": i + 1,
-    "url": `${canonicalBase}/api/share?id=${ev.id}`,
-    "name": ev?.title || `Esemény #${ev.id}`
-  }))
-});
-
-
 const gaShare = (network, ev) => {
   gaEvent("share_click", {
     event_category: "share",
-    event_label: network,
+    event_label: network, // 'facebook' | 'whatsapp' | 'gmail' | 'email' | 'native'
     value: 1,
     event_id: String(ev?.id || ""),
     title: ev?.title || "",
@@ -119,35 +90,21 @@ const IconWhatsApp = (props) => (
 );
 const IconGmail = (props) => (
   <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...props}>
-    <rect
-      x="2"
-      y="4"
-      width="20"
-      height="16"
-      rx="2"
-      ry="2"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    />
+    <rect x="2" y="4" width="20" height="16" rx="2" ry="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
     <path d="M4 8.2 L12 13 L20 8.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
     <path d="M6 17 V9.2 L12 13.2 L18 9.2 V17" fill="none" stroke="currentColor" strokeWidth="1.8" />
   </svg>
 );
 const IconShareNative = (props) => (
   <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...props}>
-    <path
-      fill="currentColor"
-      d="M16 5l-4-4-4 4h3v6h2V5h3zm2 14H6v-7H4v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7h-2v7z"
-    />
+    <path fill="currentColor" d="M16 5l-4-4-4 4h3v6h2V5h3zm2 14H6v-7H4v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7h-2v7z" />
   </svg>
 );
 
 /* ==================
    Megosztó szövegek
    ================== */
-const buildEmailSubject = (event) =>
-  `Ajánlott lelkigyakorlat: ${event?.title || "Esemény"}`;
+const buildEmailSubject = (event) => `Ajánlott lelkigyakorlat: ${event?.title || "Esemény"}`;
 
 const buildEmailBody = (event, landingUrl) => {
   const whenStart = event?.start_date ? new Date(event.start_date).toLocaleString("hu-HU") : "";
@@ -163,9 +120,7 @@ const buildGmailShare = (ev, to = "") => {
   const su = encodeURIComponent(buildEmailSubject(ev));
   const bodyRaw = buildEmailBody(ev, landing);
   const toParam = encodeURIComponent(to || "");
-  return `https://mail.google.com/mail/?view=cm&fs=1&to=${toParam}&su=${su}&body=${encodeURIComponent(
-    bodyRaw
-  )}`;
+  return `https://mail.google.com/mail/?view=cm&fs=1&to=${toParam}&su=${su}&body=${encodeURIComponent(bodyRaw)}`;
 };
 
 const buildMailto = (ev, to = "") => {
@@ -179,12 +134,115 @@ const buildMailto = (ev, to = "") => {
 /* ==========================
    Mobil felismerés (WebShare)
    ========================== */
-const isMobileUA =
-  typeof navigator !== "undefined"
-    ? /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
-    : false;
-const canWebShare =
-  isMobileUA && typeof navigator !== "undefined" && !!navigator.share;
+const isMobileUA = typeof navigator !== "undefined" ? /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) : false;
+const canWebShare = isMobileUA && typeof navigator !== "undefined" && !!navigator.share;
+
+/* ==========
+   JSON-LD segédek
+   ========== */
+const buildEventJsonLd = (ev, canonicalBase = CANONICAL_BASE) => {
+  const startISO = ev?.start_date ? new Date(ev.start_date).toISOString() : undefined;
+  const endISO = ev?.end_date ? new Date(ev.end_date).toISOString() : undefined;
+  const url = `${canonicalBase}/api/share?id=${ev.id}`;
+
+  const images = [];
+  if (ev?.poster_url) images.push(ev.poster_url);
+  else if (ev?.image_url) images.push(ev.image_url);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: ev?.title || "Lelkigyakorlat",
+    startDate: startISO,
+    ...(endISO ? { endDate: endISO } : {}),
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    description: (ev?.description || "").slice(0, 1000),
+    ...(images.length ? { image: images } : {}),
+    location: {
+      "@type": "Place",
+      name: ev?.location || "Lelkigyakorlat helyszíne",
+      address: ev?.location || "Magyarország",
+    },
+    organizer: {
+      "@type": "Organization",
+      name: ev?.communities?.name || "Szervező közösség",
+    },
+    url,
+  };
+};
+
+const buildItemListJsonLd = (events, canonicalBase = CANONICAL_BASE) => ({
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  itemListElement: events.map((ev, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    url: `${canonicalBase}/api/share?id=${ev.id}`,
+    name: ev?.title || `Esemény #${ev.id}`,
+  })),
+});
+
+/* ==========
+   ICS (naptár)
+   ========== */
+const pad2 = (n) => String(n).padStart(2, "0");
+const toIcsDate = (d) => {
+  const dt = new Date(d);
+  const y = dt.getUTCFullYear();
+  const m = pad2(dt.getUTCMonth() + 1);
+  const day = pad2(dt.getUTCDate());
+  const hh = pad2(dt.getUTCHours());
+  const mm = pad2(dt.getUTCMinutes());
+  const ss = pad2(dt.getUTCSeconds());
+  return `${y}${m}${day}T${hh}${mm}${ss}Z`;
+};
+
+const buildIcs = (ev) => {
+  const uid = `event-${ev.id}@lelkigyakorlatok.vercel.app`;
+  const dtStart = ev.start_date ? toIcsDate(ev.start_date) : toIcsDate(new Date());
+  const dtEnd = ev.end_date ? toIcsDate(ev.end_date) : dtStart;
+  const desc = [
+    ev.description || "",
+    ev.registration_link ? `Jelentkezés: ${ev.registration_link}` : "",
+    `${CANONICAL_BASE}/api/share?id=${ev.id}`,
+  ]
+    .filter(Boolean)
+    .join("\\n");
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Lelkigyakorlatok//HU",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${toIcsDate(new Date())}`,
+    `DTSTART:${dtStart}`,
+    `DTEND:${dtEnd}`,
+    `SUMMARY:${(ev.title || "Lelkigyakorlat").replace(/\r?\n/g, " ")}`,
+    `LOCATION:${(ev.location || "Magyarország").replace(/\r?\n/g, " ")}`,
+    `DESCRIPTION:${desc.replace(/\r?\n/g, "\\n")}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+};
+
+const downloadIcs = (ev) => {
+  const ics = buildIcs(ev);
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const safeTitle = (ev.title || "lelkigyakorlat").replace(/\W+/g, "_").toLowerCase();
+  a.download = `${safeTitle}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  gaEvent("add_to_calendar", { event_id: String(ev.id), title: ev.title || "" });
+};
 
 export default function EventList({ user }) {
   const [events, setEvents] = useState([]);
@@ -198,50 +256,172 @@ export default function EventList({ user }) {
   const [pageSize, setPageSize] = useState(9);
   const [editEvent, setEditEvent] = useState(null);
 
-  const targetGroups = [
-    "Fiatalok",
-    "Mindenki",
-    "Idősek",
-    "Fiatal házasok",
-    "Érett házasok",
-    "Jegyesek",
-    "Tinédzserek",
-    "Családok",
-  ];
+  // Embed mód – minimal UI
+  const isEmbed =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("embed") === "1"
+      : false;
+
+  // Közösség-szűrő
+  const [communityFilter, setCommunityFilter] = useState(null); // {type:'id'|'slug', value:string} | null
+
+  const toSlug = (s = "") =>
+    s
+      .toString()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+  const communityNameToSlug = (name) => toSlug(name || "");
+
+  const communityFilterLabel = (evs) => {
+    if (!communityFilter) return null;
+    if (communityFilter.type === "id") {
+      const match = evs?.find(
+        (e) => e?.communities?.id && String(e.communities.id) === String(communityFilter.value)
+      );
+      return match?.communities?.name || `Közösség #${communityFilter.value}`;
+    }
+    return communityFilter.value; // slug
+  };
+
+  const targetGroups = ["Fiatalok", "Mindenki", "Idősek", "Fiatal házasok", "Érett házasok", "Jegyesek", "Tinédzserek", "Családok"];
+
+  // Query paramok beolvasása (embed/kezdeti szűrők/kommunity)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search);
+    const group = p.get("group");
+    const m = p.get("month");
+    const s = p.get("src");
+    const q0 = p.get("q");
+    const cid = p.get("communityId");
+    const cslug = p.get("community");
+
+    if (group) setFilter(group);
+    if (m) setMonth(m);
+    if (s) setSourceFilter(s);
+    if (q0) setQ(q0);
+
+    if (cid) setCommunityFilter({ type: "id", value: String(cid) });
+    else if (cslug) setCommunityFilter({ type: "slug", value: toSlug(cslug) });
+
+    setPage(0);
+  }, []);
 
   useEffect(() => {
     fetchEvents();
-  }, []);
+    // eslint-disable-next-line
+  }, [communityFilter]);
+
+{/* === Beágyazás (mini-widget) panel – csak nem-embed módban === */}
+{!isEmbed && (
+  <div className="card border-0 shadow-sm my-3">
+    <div className="card-body">
+      <h5 className="card-title mb-2">Beágyazható mini-widget</h5>
+      <p className="text-muted mb-2">
+        Másold be az alábbi kódot a saját oldaladra. A widget csak a beállított közösség eseményeit mutatja.
+      </p>
+
+      {(() => {
+        const base = "https://lelkigyakorlatok.vercel.app/";
+        // alap paraméterek:
+        const params = new URLSearchParams({ embed: "1" });
+        // ha van community filter, adjuk hozzá
+        if (communityFilter?.type === "id") params.set("communityId", String(communityFilter.value));
+        if (communityFilter?.type === "slug") params.set("community", String(communityFilter.value));
+
+        const srcId = `${base}?${params.toString()}`;
+        const codeId = `<iframe src="${srcId}" style="width:100%;height:700px;border:0;overflow:hidden" loading="lazy"></iframe>`;
+
+        // slug sablon (bemutató)
+        const paramsSlug = new URLSearchParams({ embed: "1", community: "martineum" });
+        const srcSlug = `${base}?${paramsSlug.toString()}`;
+        const codeSlug = `<iframe src="${srcSlug}" style="width:100%;height:700px;border:0;overflow:hidden" loading="lazy"></iframe>`;
+
+        const copy = async (txt) => {
+          try {
+            await navigator.clipboard.writeText(txt);
+            alert("Beágyazási kód a vágólapon.");
+          } catch {
+            // no-op
+          }
+        };
+
+        return (
+          <div className="row g-3">
+            <div className="col-md-8">
+              <label className="form-label fw-semibold">
+                Aktuális szűrőhöz illesztett kód {communityFilter ? "(közösség beállítva)" : "(jelenleg nincs közösség szűrő)"}
+              </label>
+              <textarea className="form-control" rows={3} value={codeId} readOnly />
+            </div>
+            <div className="col-md-4 d-flex align-items-end">
+              <button className="btn btn-outline-primary ms-md-2 w-100" onClick={() => copy(codeId)}>
+                Kód másolása
+              </button>
+            </div>
+
+            <div className="col-md-8">
+              <label className="form-label fw-semibold">Példa SLUG-gal (név alapján)</label>
+              <textarea className="form-control" rows={3} value={codeSlug} readOnly />
+              <div className="small text-muted mt-1">
+                A <code>community=martineum</code> helyére írd be a saját közösséged slugját (pl. <em>martineum-felnottkepzo-akademia</em>).
+              </div>
+            </div>
+            <div className="col-md-4 d-flex align-items-end">
+              <button className="btn btn-outline-secondary ms-md-2 w-100" onClick={() => copy(codeSlug)}>
+                Példa kód másolása
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  </div>
+)}
+
 
   async function fetchEvents() {
-    const base = supabase.from("events");
-    let { data, error } = await base
+    let base = supabase
+      .from("events")
       .select(
         `
         id, title, location, description, start_date, end_date,
         contact, registration_link, target_group, source, created_by,
-        image_url, poster_url,
+        image_url, poster_url, community_id,
         communities (id, name)
       `
       )
       .gte("start_date", new Date().toISOString())
       .order("start_date", { ascending: true });
 
+    // ha communityId van, szűrjünk SQL-ben
+    if (communityFilter?.type === "id") {
+      base = base.eq("community_id", communityFilter.value);
+    }
+
+    let { data, error } = await base;
+
     if (error) {
-      console.warn(
-        "Lekérdezés poster_url/image_url mezőkkel hibázott, fallback indul:",
-        error?.message || error
-      );
-      ({ data, error } = await base
+      // fallback régi selectre ha image_url/poster_url nem létezne
+      let fb = supabase
+        .from("events")
         .select(
           `
           id, title, location, description, start_date, end_date,
           contact, registration_link, target_group, source, created_by,
+          community_id,
           communities (id, name)
         `
         )
         .gte("start_date", new Date().toISOString())
-        .order("start_date", { ascending: true }));
+        .order("start_date", { ascending: true });
+
+      if (communityFilter?.type === "id") fb = fb.eq("community_id", communityFilter.value);
+      ({ data, error } = await fb);
     }
 
     if (error) {
@@ -257,20 +437,9 @@ export default function EventList({ user }) {
   const isAuto = (e) => !!e.source && !e.created_by;
 
   function cardStyle(e) {
-    if (isOwn(e))
-      return {
-        border: "border-success",
-        badge: "Saját",
-        badgeVariant: "success",
-      };
-    if (isAuto(e))
-      return {
-        border: "border-secondary",
-        badge: "Automatikus",
-        badgeVariant: "secondary",
-      };
-    if (isManual(e))
-      return { border: "border-primary", badge: "Kézi", badgeVariant: "primary" };
+    if (isOwn(e)) return { border: "border-success", badge: "Saját", badgeVariant: "success" };
+    if (isAuto(e)) return { border: "border-secondary", badge: "Automatikus", badgeVariant: "secondary" };
+    if (isManual(e)) return { border: "border-primary", badge: "Kézi", badgeVariant: "primary" };
     return { border: "border-light", badge: null };
   }
 
@@ -389,6 +558,17 @@ export default function EventList({ user }) {
   }
 
   const filteredEvents = events.filter((event) => {
+    // --- közösség szűrő ---
+    if (communityFilter) {
+      if (communityFilter.type === "id") {
+        if (String(event?.communities?.id) !== String(communityFilter.value)) return false;
+      } else if (communityFilter.type === "slug") {
+        const evSlug = communityNameToSlug(event?.communities?.name || "");
+        if (evSlug !== communityFilter.value) return false;
+      }
+    }
+
+    // --- a meglévő szűrők ---
     if (filter === "sajat") {
       if (!isOwn(event)) return false;
     } else {
@@ -456,19 +636,12 @@ export default function EventList({ user }) {
           </select>
           <Pagination className="mb-0">
             <Pagination.First disabled={page === 0} onClick={() => setPage(0)} />
-            <Pagination.Prev
-              disabled={page === 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-            />
+            <Pagination.Prev disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))} />
             {getVisiblePages().map((it, i) =>
               it.type === "dots" ? (
                 <Pagination.Ellipsis disabled key={`dots-${it.k}-${i}`} />
               ) : (
-                <Pagination.Item
-                  key={it.n}
-                  active={it.n === page}
-                  onClick={() => setPage(it.n)}
-                >
+                <Pagination.Item key={it.n} active={it.n === page} onClick={() => setPage(it.n)}>
                   {it.n + 1}
                 </Pagination.Item>
               )
@@ -477,10 +650,7 @@ export default function EventList({ user }) {
               disabled={page >= totalPages - 1}
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             />
-            <Pagination.Last
-              disabled={page >= totalPages - 1}
-              onClick={() => setPage(totalPages - 1)}
-            />
+            <Pagination.Last disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} />
           </Pagination>
         </div>
       </div>
@@ -489,7 +659,7 @@ export default function EventList({ user }) {
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [page, pageSize, filter, sourceFilter, q, month]);
+  }, [page, pageSize, filter, sourceFilter, q, month, communityFilter]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -505,17 +675,11 @@ export default function EventList({ user }) {
       ? "Katolikus lelkigyakorlat-kereső – friss események"
       : `Lelkigyakorlatok – ${filter.toLowerCase()} célcsoport`;
   const pageDesc =
-    "Friss katolikus lelkigyakorlatok egy helyen. Szűrés célcsoport, hónap, forrás szerint – jelentkezési linkekkel.";
-  const url =
-    typeof window !== "undefined"
-      ? window.location.href.split("#")[0]
-      : CANONICAL_BASE;
+    "Friss katolikus lelkigyakorlatok egy helyen. Szűrés célcsoport, hónap, forrás és közösség szerint – jelentkezési linkekkel.";
+  const url = typeof window !== "undefined" ? window.location.href.split("#")[0] : CANONICAL_BASE;
 
   const first = paginatedEvents?.[0];
   const ogTitle = first?.title || "Lelkigyakorlatok";
-  const ogDate = first ? formatDateRange(first.start_date, first.end_date) : "";
-  const ogPlace = first?.location || "";
-
   const OG_FALLBACK =
     "https://kibgskyyevsighwtkqcf.supabase.co/storage/v1/object/public/event-images/og/og_1.jpg";
   const ogImage = first?.poster_url ? first.poster_url : OG_FALLBACK;
@@ -556,148 +720,177 @@ export default function EventList({ user }) {
   return (
     <div className="container mt-4">
       <Seo title={pageTitle} description={pageDesc} url={url} image={ogImage} />
-	  
-		{/* JSON-LD: ItemList (aktuális oldal tartalma) */}
-		<script
-		  type="application/ld+json"
-		  dangerouslySetInnerHTML={{
-			__html: JSON.stringify(buildItemListJsonLd(paginatedEvents, CANONICAL_BASE))
-		  }}
-		/>
 
-		{/* JSON-LD: Egyedi Event blokkok a látható kártyákhoz */}
-		{paginatedEvents.map(ev => (
-		  <script
-			key={`jsonld-${ev.id}`}
-			type="application/ld+json"
-			dangerouslySetInnerHTML={{
-			  __html: JSON.stringify(buildEventJsonLd(ev, CANONICAL_BASE))
-			}}
-		  />
-		))}
-		<script
-		  type="application/ld+json"
-		  dangerouslySetInnerHTML={{
-			__html: JSON.stringify({
-			  "@context": "https://schema.org",
-			  "@type": "WebSite",
-			  "name": "Katolikus lelkigyakorlat-kereső",
-			  "url": "https://lelkigyakorlatok.vercel.app/",
-			  "potentialAction": {
-				"@type": "SearchAction",
-				"target": "https://lelkigyakorlatok.vercel.app/?q={search_term_string}",
-				"query-input": "required name=search_term_string"
-			  }
-			})
-		  }}
-		/>
+      {/* WebSite JSON-LD – egyszerű globális séma */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "Katolikus lelkigyakorlat-kereső",
+            url: "https://lelkigyakorlatok.vercel.app/",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: "https://lelkigyakorlatok.vercel.app/?q={search_term_string}",
+              "query-input": "required name=search_term_string",
+            },
+          }),
+        }}
+      />
 
+      {/* ItemList + egyedi Event JSON-LD a látható listához */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(buildItemListJsonLd(paginatedEvents, CANONICAL_BASE)),
+        }}
+      />
+      {paginatedEvents.map((ev) => (
+        <script
+          key={`jsonld-${ev.id}`}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(buildEventJsonLd(ev, CANONICAL_BASE)) }}
+        />
+      ))}
 
-      {!user && (
+      {!user && !isEmbed && (
         <div className="alert alert-info text-center">
           Lelkigyakorlatok létrehozásához be kell lépned. Böngészni belépés nélkül is tudsz.
         </div>
       )}
 
-      <div className="text-center mb-4">
-        <img
-          src={headerImage}
-          alt="Katolikus lelkigyakorlat"
-          className="img-fluid rounded"
-        />
-        <h1 className="mt-3">Katolikus Lelkigyakorlat-kereső</h1>
-        <h4>Találd meg azt a lelkigyakorlatot, ami neked szól!</h4>
-      </div>
+      {!isEmbed && (
+        <div className="text-center mb-4">
+          <img src={headerImage} alt="Katolikus lelkigyakorlat" className="img-fluid rounded" />
+          <h1 className="mt-3">Katolikus Lelkigyakorlat-kereső</h1>
+          <h4>Találd meg azt a lelkigyakorlatot, ami neked szól!</h4>
+        </div>
+      )}
 
       <div className="row">
-        {/* Bal oldali szűrők */}
-        <div className="col-md-3 mb-3 sidebar-sticky">
-          <strong>Célcsoport:</strong>
-          <div className="d-flex flex-column mt-2">
-            {targetGroups.map((group) => (
-              <button
-                key={group}
-                className={`btn btn-outline-primary mb-2 ${
-                  filter === group ? "active" : ""
-                }`}
-                onClick={() => {
-                  setFilter(group);
-                  setPage(0);
-                  setSelectedEvent(null);
-                }}
-              >
-                {group}
-              </button>
-            ))}
-            {user && (
-              <button
-                className={`btn btn-outline-success mt-3 ${
-                  filter === "sajat" ? "active" : ""
-                }`}
-                onClick={() => {
-                  setFilter("sajat");
-                  setPage(0);
-                  setSelectedEvent(null);
-                }}
-              >
-                Saját eseményeim
-              </button>
+        {/* Bal oldali szűrők – embed módban rejtve */}
+        {!isEmbed && (
+          <div className="col-md-3 mb-3 sidebar-sticky">
+            {/* Közösség-szűrő infó */}
+            {communityFilter && (
+              <div className="alert alert-light border d-flex align-items-center justify-content-between py-2">
+                <div>
+                  <strong>Közösség szűrő:</strong> {communityFilterLabel(events)}{" "}
+                  <span className="text-muted small">
+                    ({communityFilter.type === "id" ? "ID alapján" : "név/slug alapján"})
+                  </span>
+                </div>
+                <button
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={() => {
+                    setCommunityFilter(null);
+                    setPage(0);
+                  }}
+                >
+                  Szűrő törlése
+                </button>
+              </div>
             )}
-          </div>
 
-          <hr />
-          <strong>Forrás:</strong>
-          <div className="d-flex flex-column mt-2">
-            <button
-              className={`btn btn-outline-secondary mb-2 ${
-                sourceFilter === "mind" ? "active" : ""
-              }`}
-              onClick={() => {
-                setSourceFilter("mind");
-                setPage(0);
-              }}
-            >
-              Mind
-            </button>
-            <button
-              className={`btn btn-outline-primary mb-2 ${
-                sourceFilter === "kezi" ? "active" : ""
-              }`}
-              onClick={() => {
-                setSourceFilter("kezi");
-                setPage(0);
-              }}
-            >
-              Kézi
-            </button>
-            <button
-              className={`btn btn-outline-dark ${
-                sourceFilter === "auto" ? "active" : ""
-              }`}
-              onClick={() => {
-                setSourceFilter("auto");
-                setPage(0);
-              }}
-            >
-              Automatikus
-            </button>
-          </div>
+            <strong>Célcsoport:</strong>
+            <div className="d-flex flex-column mt-2">
+              {targetGroups.map((group) => (
+                <button
+                  key={group}
+                  className={`btn btn-outline-primary mb-2 ${filter === group ? "active" : ""}`}
+                  onClick={() => {
+                    setFilter(group);
+                    setPage(0);
+                    setSelectedEvent(null);
+                  }}
+                >
+                  {group}
+                </button>
+              ))}
+              {user && (
+                <button
+                  className={`btn btn-outline-success mt-3 ${filter === "sajat" ? "active" : ""}`}
+                  onClick={() => {
+                    setFilter("sajat");
+                    setPage(0);
+                    setSelectedEvent(null);
+                  }}
+                >
+                  Saját eseményeim
+                </button>
+              )}
+            </div>
 
-          <div className="mt-3 small text-muted">
-            <div className="mb-1">
-              <Badge bg="success">Saját</Badge> – általad felvitt
+            <hr />
+            <strong>Forrás:</strong>
+            <div className="d-flex flex-column mt-2">
+              <button
+                className={`btn btn-outline-secondary mb-2 ${sourceFilter === "mind" ? "active" : ""}`}
+                onClick={() => {
+                  setSourceFilter("mind");
+                  setPage(0);
+                }}
+              >
+                Mind
+              </button>
+              <button
+                className={`btn btn-outline-primary mb-2 ${sourceFilter === "kezi" ? "active" : ""}`}
+                onClick={() => {
+                  setSourceFilter("kezi");
+                  setPage(0);
+                }}
+              >
+                Kézi
+              </button>
+              <button
+                className={`btn btn-outline-dark ${sourceFilter === "auto" ? "active" : ""}`}
+                onClick={() => {
+                  setSourceFilter("auto");
+                  setPage(0);
+                }}
+              >
+                Automatikus
+              </button>
             </div>
-            <div className="mb-1">
-              <Badge bg="primary">Kézi</Badge> – más által felvitt
-            </div>
-            <div className="mb-1">
-              <Badge bg="secondary">Automatikus</Badge> – RSS/gyűjtő
+
+            <div className="mt-3 small text-muted">
+              <div className="mb-1">
+                <Badge bg="success">Saját</Badge> – általad felvitt
+              </div>
+              <div className="mb-1">
+                <Badge bg="primary">Kézi</Badge> – más által felvitt
+              </div>
+              <div className="mb-1">
+                <Badge bg="secondary">Automatikus</Badge> – RSS/gyűjtő
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Jobb: lista */}
-        <div className="col-md-9">
+        {/* Jobb: lista – embed módban teljes szélesség */}
+        <div className={isEmbed ? "col-12" : "col-md-9"}>
+          {/* Embed módban is legyen kereső + közösség-szűrő jelzés */}
+          {isEmbed && communityFilter && (
+            <div className="alert alert-light border d-flex align-items-center justify-content-between py-2">
+              <div>
+                <strong>Közösség szűrő:</strong> {communityFilterLabel(events)}{" "}
+                <span className="text-muted small">
+                  ({communityFilter.type === "id" ? "ID alapján" : "név/slug alapján"})
+                </span>
+              </div>
+              <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => {
+                  setCommunityFilter(null);
+                  setPage(0);
+                }}
+              >
+                Szűrő törlése
+              </button>
+            </div>
+          )}
+
           <div className="d-flex flex-column gap-2">
             <div className="d-flex gap-2">
               <input
@@ -711,20 +904,18 @@ export default function EventList({ user }) {
               />
             </div>
             <div className="d-flex flex-wrap gap-2">
-              {["osszes", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"].map(
-                (m) => (
-                  <button
-                    key={m}
-                    className={`btn btn-sm ${month === m ? "btn-primary" : "btn-outline-primary"}`}
-                    onClick={() => {
-                      setMonth(m);
-                      setPage(0);
-                    }}
-                  >
-                    {m === "osszes" ? "Összes hónap" : `${m}. hónap`}
-                  </button>
-                )
-              )}
+              {["osszes", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"].map((m) => (
+                <button
+                  key={m}
+                  className={`btn btn-sm ${month === m ? "btn-primary" : "btn-outline-primary"}`}
+                  onClick={() => {
+                    setMonth(m);
+                    setPage(0);
+                  }}
+                >
+                  {m === "osszes" ? "Összes hónap" : `${m}. hónap`}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -800,9 +991,7 @@ export default function EventList({ user }) {
                     <div className="card-body">
                       <div className="d-flex justify-content-between align-items-start">
                         <h5 className="card-title me-2">{event.title}</h5>
-                        {style.badge && (
-                          <Badge bg={style.badgeVariant}>{style.badge}</Badge>
-                        )}
+                        {style.badge && <Badge bg={style.badgeVariant}>{style.badge}</Badge>}
                       </div>
                       <p className="card-text mb-2">
                         {event.location || "—"} — {formatDateRange(event.start_date, event.end_date)}
@@ -811,6 +1000,18 @@ export default function EventList({ user }) {
                       {/* gombsor bal + megosztás ikonok jobb */}
                       <div className="d-flex align-items-center justify-content-between mt-2 flex-wrap gap-2">
                         <div className="d-flex align-items-center gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-secondary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              downloadIcs(event);
+                            }}
+                            title="Naptárba (ICS)"
+                          >
+                            📅 Naptárba
+                          </button>
+
                           {event.registration_link && (
                             <a
                               className="btn btn-sm btn-outline-primary"
@@ -1015,29 +1216,22 @@ export default function EventList({ user }) {
               <strong>Helyszín:</strong> {selectedEvent.location}
             </p>
             <p>
-              <strong>Kezdés:</strong>{" "}
-              {formatDateRange(selectedEvent.start_date, null)}
+              <strong>Kezdés:</strong> {formatDateRange(selectedEvent.start_date, null)}
             </p>
             {selectedEvent.end_date && (
               <p>
-                <strong>Befejezés:</strong>{" "}
-                {formatDateRange(selectedEvent.end_date, null)}
+                <strong>Befejezés:</strong> {formatDateRange(selectedEvent.end_date, null)}
               </p>
             )}
             <p>
               <strong>Kapcsolattartó:</strong> {selectedEvent.contact}
             </p>
             <p>
-              <strong>Szervező közösség:</strong>{" "}
-              {selectedEvent.communities?.name || "Nincs megadva"}
+              <strong>Szervező közösség:</strong> {selectedEvent.communities?.name || "Nincs megadva"}
             </p>
             <p>
               <strong>Jelentkezés link:</strong>{" "}
-              <a
-                href={selectedEvent.registration_link}
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a href={selectedEvent.registration_link} target="_blank" rel="noreferrer">
                 {selectedEvent.registration_link}
               </a>
             </p>
@@ -1048,17 +1242,22 @@ export default function EventList({ user }) {
             )}
           </Modal.Body>
           <Modal.Footer className="d-flex justify-content-between">
-            {user && selectedEvent.created_by === user.id && (
-              <Button
-                variant="warning"
-                onClick={() => {
-                  setEditEvent(selectedEvent);
-                  setSelectedEvent(null);
-                }}
-              >
-                ✏️ Szerkesztés
+            <div className="d-flex gap-2">
+              <Button variant="outline-secondary" onClick={() => downloadIcs(selectedEvent)} title="Naptárba (ICS)">
+                📅 Naptárba
               </Button>
-            )}
+              {user && selectedEvent.created_by === user.id && (
+                <Button
+                  variant="warning"
+                  onClick={() => {
+                    setEditEvent(selectedEvent);
+                    setSelectedEvent(null);
+                  }}
+                >
+                  ✏️ Szerkesztés
+                </Button>
+              )}
+            </div>
             <Button variant="secondary" onClick={() => setSelectedEvent(null)}>
               Vissza
             </Button>

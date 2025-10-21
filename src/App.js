@@ -3,6 +3,9 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Container } from "react-bootstrap";
 import PageContent from "./components/PageContent";
 import { supabase } from "./supabaseClient";
+import Organizers from "./pages/Organizers";
+
+<Route path="/szervezoknek" element={<Organizers />} />
 
 function App() {
   const [currentPage, setCurrentPage] = useState("home");
