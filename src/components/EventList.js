@@ -23,7 +23,11 @@ export default function EventList({ user }) {
     "Fiatalok", "Mindenki", "Idősek", "Fiatal házasok",
     "Érett házasok", "Jegyesek", "Tinédzserek", "Családok",
   ];
+  const isMobileUA = typeof navigator !== "undefined"
+  ? /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+  : false;
 
+const canWebShare = isMobileUA && typeof navigator !== "undefined" && !!navigator.share;
   useEffect(() => { fetchEvents(); }, []);
 
   async function fetchEvents() {
@@ -78,22 +82,23 @@ export default function EventList({ user }) {
 
   // --- KATEGÓRIA-ALAPÚ FALLBACK KÉPEK ---
   function groupSlug(group = "") {
-    const repl = (s) => s
-      .replaceAll("á","a").replaceAll("é","e").replaceAll("í","i")
-      .replaceAll("ó","o").replaceAll("ö","o").replaceAll("ő","o")
-      .replaceAll("ú","u").replaceAll("ü","u").replaceAll("ű","u");
-    const base = repl((group || "").toLowerCase()).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    if (base.includes("fiatal-hazas")) return "hazasok";
-    if (base.includes("erett-hazas"))  return "eretthazasok";
-    if (base.includes("erett"))        return "eretthazasok";
-    if (base.includes("jegyes"))       return "jegyesek";
-    if (base.includes("tinedzs"))      return "tinedzserek";
-    if (base.includes("csalad"))       return "csaladok";
-    if (base.includes("idos"))         return "idosek";
-    if (base.includes("fiatal"))       return "fiatalok";
-    if (base.includes("mindenki"))     return "mindenki";
-    return "general";
-  }
+  const repl = (s) => s
+    .replaceAll("á","a").replaceAll("é","e").replaceAll("í","i")
+    .replaceAll("ó","o").replaceAll("ö","o").replaceAll("ő","o")
+    .replaceAll("ú","u").replaceAll("ü","u").replaceAll("ű","u");
+  const base = repl((group || "").toLowerCase()).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+  if (base.includes("fiatal-hazas")) return "fiatalhazasok"; // ← EZT javítottam
+  if (base.includes("erett-hazas"))  return "eretthazasok";
+  if (base.includes("erett"))        return "eretthazasok";
+  if (base.includes("jegyes"))       return "jegyesek";
+  if (base.includes("tinedzs"))      return "tinedzserek";
+  if (base.includes("csalad"))       return "csaladok";
+  if (base.includes("idos"))         return "idosek";
+  if (base.includes("fiatal"))       return "fiatalok";
+  if (base.includes("mindenki"))     return "mindenki";
+  return "general";
+}
 
   // CSERÉLD A SAJÁT PUBLIC STORAGE URL-JEIDRE:
   const FALLBACKS = {
@@ -214,7 +219,7 @@ export default function EventList({ user }) {
     return `mailto:${toParam}?subject=${su}&body=${body}`;
   };
 
-  const canWebShare = typeof navigator !== "undefined" && !!navigator.share;
+ 
   const onNativeShare = async (event) => {
     try {
       await navigator.share({
@@ -242,11 +247,17 @@ export default function EventList({ user }) {
       <path fill="currentColor" d="M20.52 3.48A11.86 11.86 0 0 0 12.05 0C5.45 0 .14 5.3.14 11.92c0 2.1.55 4.15 1.61 5.96L0 24l6.28-1.64a12 12 0 0 0 5.76 1.47h.01c6.6 0 11.92-5.31 11.92-11.92 0-3.19-1.24-6.19-3.45-8.43ZM12.05 22a9.99 9.99 0 0 1-5.1-1.4l-.37-.22-3.73.97.99-3.64-.24-.37a10.02 10.02 0 1 1 8.45 4.66Zm5.48-7.43c-.3-.15-1.77-.87-2.05-.96-.27-.1-.47-.15-.67.15-.2.3-.77.95-.94 1.14-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.74-1.64-2.03-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.6-.92-2.18-.24-.58-.49-.5-.67-.5h-.57c-.2 0-.52.07-.8.37-.27.3-1.05 1.02-1.05 2.48 0 1.46 1.08 2.87 1.22 3.07.15.2 2.12 3.23 5.15 4.53.72.31 1.28.49 1.72.63.72.23 1.37.2 1.88.12.58-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35Z"/>
     </svg>
   );
-  const IconGmail = (props) => (
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...props}>
-      <path fill="currentColor" d="M20 4H4c-1.1 0-2 .9-2 2v1.2l10 6.25L22 7.2V6c0-1.1-.9-2-2-2zm0 4.4-8 5-8-5V18c0 1.1.9 2 2 2h4v-7h4v7h4c1.1 0 2-.9 2-2V8.4z"/>
-    </svg>
-  );
+const IconGmail = (props) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...props}>
+    {/* boríték keret */}
+    <rect x="2" y="4" width="20" height="16" rx="2" ry="2"
+          fill="none" stroke="currentColor" strokeWidth="1.8"/>
+    {/* piros "M" */}
+    <path d="M4 8.2 L12 13 L20 8.2" fill="none" stroke="currentColor" strokeWidth="1.8"/>
+    <path d="M6 17 V9.2 L12 13.2 L18 9.2 V17" fill="none" stroke="currentColor" strokeWidth="1.8"/>
+  </svg>
+);
+
   const IconShareNative = (props) => (
     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" {...props}>
       <path fill="currentColor" d="M16 5l-4-4-4 4h3v6h2V5h3zm2 14H6v-7H4v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7h-2v7z"/>
@@ -511,17 +522,17 @@ export default function EventList({ user }) {
                         <div className="d-flex align-items-center gap-2 ms-auto">
                           {/* Natív megosztás (mobil / támogatott böngészők) */}
                           {canWebShare && (
-                            <button
-                              type="button"
-                              onClick={(e)=>{ e.stopPropagation(); onNativeShare(event); }}
-                              className="btn btn-light border rounded-circle p-2"
-                              title="Megosztás (telefon)"
-                              aria-label="Megosztás (telefon)"
-                              style={{ width:36, height:36, display:"inline-flex", alignItems:"center", justifyContent:"center" }}
-                            >
-                              <IconShareNative />
-                            </button>
-                          )}
+							  <button
+								type="button"
+								onClick={(e)=>{ e.stopPropagation(); onNativeShare(event); }}
+								className="btn btn-light border rounded-circle p-2"
+								title="Megosztás (telefon)"
+								aria-label="Megosztás (telefon)"
+								style={{ width:36, height:36, display:"inline-flex", alignItems:"center", justifyContent:"center" }}
+							  >
+								<IconShareNative />
+							  </button>
+							)}
 
                           {/* Facebook */}
                           <a
@@ -546,15 +557,45 @@ export default function EventList({ user }) {
                           </a>
 
                           {/* Gmail (webes compose) */}
-                          <a
-                            href={buildGmailShare(event)}
-                            target="_blank" rel="noreferrer" onClick={(e)=>e.stopPropagation()}
-                            className="btn btn-light border rounded-circle p-2"
-                            title="Megosztás Gmailben" aria-label="Megosztás Gmailben"
-                            style={{ width:36, height:36, display:"inline-flex", alignItems:"center", justifyContent:"center" }}
-                          >
-                            <IconGmail />
-                          </a>
+                          <span style={{ position: "relative", display: "inline-block" }}>
+							  <a
+								href={buildGmailShare(event)}
+								target="_blank"
+								rel="noreferrer"
+								onClick={(e)=>e.stopPropagation()}
+								className="btn border rounded-circle p-2"
+								title="Megnyitás Gmailben"
+								aria-label="Megnyitás Gmailben"
+								style={{
+								  width: 36, height: 36,
+								  display: "inline-flex", alignItems: "center", justifyContent: "center",
+								  borderColor: "#ea4335",
+								  color: "#ea4335",
+								  backgroundColor: "#fce8e6",
+								}}
+							  >
+								<IconGmail />
+							  </a>
+
+							  {/* Sarok-badge */}
+							  <span
+								style={{
+								  position: "absolute",
+								  right: -2,
+								  bottom: -2,
+								  background: "#ea4335",
+								  color: "#fff",
+								  borderRadius: 6,
+								  fontSize: 10,
+								  lineHeight: "12px",
+								  padding: "0 4px",
+								  fontWeight: 700,
+								  pointerEvents: "none", // ne blokkolja a kattintást
+								}}
+							  >
+								G
+							  </span>
+							</span>
 
                           {/* mailto fallback (maradhat) */}
                           <a
