@@ -24,6 +24,53 @@ const appendUTM = (url, params) => {
 
 const SHARE_CAMPAIGN = "launch";
 
+// --- JSON-LD segéd: egyetlen eventhez
+const buildEventJsonLd = (ev, canonicalBase = "https://lelkigyakorlatok.vercel.app") => {
+  const startISO = ev?.start_date ? new Date(ev.start_date).toISOString() : undefined;
+  const endISO   = ev?.end_date   ? new Date(ev.end_date).toISOString()   : undefined;
+  const url      = `${canonicalBase}/api/share?id=${ev.id}`;
+
+  // képek: poszter -> image_url -> fallback
+  const images = [];
+  if (ev?.poster_url) images.push(ev.poster_url);
+  else if (ev?.image_url) images.push(ev.image_url);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": ev?.title || "Lelkigyakorlat",
+    "startDate": startISO,
+    ...(endISO ? {"endDate": endISO} : {}),
+    "eventStatus": "https://schema.org/EventScheduled",
+    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+    "description": (ev?.description || "").slice(0, 1000),
+    ...(images.length ? {"image": images} : {}),
+    "location": {
+      "@type": "Place",
+      "name": ev?.location || "Lelkigyakorlat helyszíne",
+      "address": ev?.location || "Magyarország"
+    },
+    "organizer": {
+      "@type": "Organization",
+      "name": ev?.communities?.name || "Szervező közösség"
+    },
+    "url": url
+  };
+};
+
+// --- JSON-LD: ItemList a lapon látható eventekhez
+const buildItemListJsonLd = (events, canonicalBase = "https://lelkigyakorlatok.vercel.app") => ({
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "itemListElement": events.map((ev, i) => ({
+    "@type": "ListItem",
+    "position": i + 1,
+    "url": `${canonicalBase}/api/share?id=${ev.id}`,
+    "name": ev?.title || `Esemény #${ev.id}`
+  }))
+});
+
+
 const gaShare = (network, ev) => {
   gaEvent("share_click", {
     event_category: "share",
@@ -509,6 +556,42 @@ export default function EventList({ user }) {
   return (
     <div className="container mt-4">
       <Seo title={pageTitle} description={pageDesc} url={url} image={ogImage} />
+	  
+		{/* JSON-LD: ItemList (aktuális oldal tartalma) */}
+		<script
+		  type="application/ld+json"
+		  dangerouslySetInnerHTML={{
+			__html: JSON.stringify(buildItemListJsonLd(paginatedEvents, CANONICAL_BASE))
+		  }}
+		/>
+
+		{/* JSON-LD: Egyedi Event blokkok a látható kártyákhoz */}
+		{paginatedEvents.map(ev => (
+		  <script
+			key={`jsonld-${ev.id}`}
+			type="application/ld+json"
+			dangerouslySetInnerHTML={{
+			  __html: JSON.stringify(buildEventJsonLd(ev, CANONICAL_BASE))
+			}}
+		  />
+		))}
+		<script
+		  type="application/ld+json"
+		  dangerouslySetInnerHTML={{
+			__html: JSON.stringify({
+			  "@context": "https://schema.org",
+			  "@type": "WebSite",
+			  "name": "Katolikus lelkigyakorlat-kereső",
+			  "url": "https://lelkigyakorlatok.vercel.app/",
+			  "potentialAction": {
+				"@type": "SearchAction",
+				"target": "https://lelkigyakorlatok.vercel.app/?q={search_term_string}",
+				"query-input": "required name=search_term_string"
+			  }
+			})
+		  }}
+		/>
+
 
       {!user && (
         <div className="alert alert-info text-center">
