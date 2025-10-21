@@ -1,13 +1,14 @@
-// App.js
+// src/App.js
 import React, { useEffect, useState, useCallback } from "react";
 import { Container } from "react-bootstrap";
-import PageContent from "./components/PageContent";
-import { supabase } from "./supabaseClient";
-import Organizers from "./pages/Organizers";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
-<Route path="/szervezoknek" element={<Organizers />} />
+import PageContent from "./components/PageContent";
+import Organizers from "./pages/Organizers";
+import { supabase } from "./supabaseClient";
 
 function App() {
+  // Egyszerű kliens oldali oldalváltáshoz a PageContent-nek továbbra is átadjuk
   const [currentPage, setCurrentPage] = useState("home");
 
   // Supabase auth állapot
@@ -53,20 +54,38 @@ function App() {
   }
 
   return (
-    <>
-      {/* Ha később vissza akarod hozni a Navbar-t, ide teheted;
-          a user itt már biztosan be van olvasva */}
-      <Container className="mt-4">
-        <PageContent
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          user={user}
-          onSignOut={handleSignOut}
+    <Router>
+      <Routes>
+        {/* Főoldal */}
+        <Route
+          path="/"
+          element={
+            <Container className="mt-4">
+              <PageContent
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+                user={user}
+                onSignOut={handleSignOut}
+              />
+            </Container>
+          }
         />
-      </Container>
-    </>
+
+        {/* Szervezőknek oldal */}
+        <Route
+          path="/szervezoknek"
+          element={
+            <Container className="mt-4">
+              <Organizers />
+            </Container>
+          }
+        />
+
+        {/* Minden más útvonal visszairányít a főoldalra */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }
 
 export default App;
-
