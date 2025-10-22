@@ -230,39 +230,33 @@ function sourceSpecificFixes(row){
     }
   }
 
-  // Jezsuiták: ne mutasson képre a jelentkezési link
-  // (rss 'source' nem 'Jezsuiták', ezért a domain alapján is jelöljük)
+  // Jezsuiták: ne mutasson képre a jelentkezési link (domain alapján is)
   const srcTxt = `${row.source||""} ${row.source_url||""}`.toLowerCase();
-  if (/jezsuit/.test(srcTxt)){
-    if (row.registration_link && /\.(gif|png|jpe?g|webp|svg)(\?|$)/i.test(row.registration_link)){
+  if (/jezsuit/.test(srcTxt)) {
+    if (
+      row.registration_link &&
+      (
+        /\.(gif|png|jpe?g|webp|svg)(\?|$)/i.test(row.registration_link) ||
+        /\/wp-includes\/js\/tinymce\/plugins\/wordpress\/img\/trans\.gif/i.test(row.registration_link)
+      )
+    ) {
       row.registration_link = null;
       notes.push("reglink_removed:image");
     }
-	if (/\.(gif|png|jpe?g|webp|svg)(\?|$)/i.test(row.registration_link) ||
-        /\/wp-includes\/js\/tinymce\/plugins\/wordpress\/img\/trans\.gif/i.test(row.registration_link)) {
-      // kép/gif → dobd el és próbálj fallbacket
-      row.registration_link = null;
-      notes.push("reglink_removed:image");
-    }
-	  if (row.registration_link && (
-+        /\.(gif|png|jpe?g|webp|svg)(\?|$)/i.test(row.registration_link) ||
-+        /\/wp-includes\/js\/tinymce\/plugins\/wordpress\/img\/trans\.gif/i.test(row.registration_link)
-+      )) {
-+      row.registration_link = null;
-+      notes.push("reglink_removed:image");
-+    }
   }
-  
- // 5.2/b Fallback: ha továbbra sincs registration_link, de van részletoldal
- if (!row.registration_link) {
-   const fallback = row.link || row.source_url || null;
-   if (fallback) {
-     row.registration_link = fallback;
-     notes.push("reglink:fallback_to_detail");
-   }
- }
+
+  // Fallback: ha nincs registration_link, dőljön vissza a részletoldalra / forrásra
+  if (!row.registration_link) {
+    const fallback = row.link || row.source_url || null;
+    if (fallback) {
+      row.registration_link = fallback;
+      notes.push("reglink:fallback_to_detail");
+    }
+  }
+
   return notes;
 }
+
 
 function normalizeAndEnrich(rawRow){
   const row = { ...rawRow };
@@ -712,24 +706,25 @@ function prepareRows(rows) {
   return rows
     .filter((r) => r.title && r.start_date)
     .map((r) => {
-      const key = buildUniquenessKey(r);
-	  const key = r.uniqueness_key || buildUniquenessKey(r);
+      // Ha a rekord már hoz saját uniqueness_key-t (pl. ELZA: sha1("elza|"+href)), azt őrizzük meg
+      const key = r.uniqueness_key || buildUniquenessKey(r);
       const keyHash = sha1(key);
       return {
         ...r,
         title: r.title.slice(0, 255),
-        description: r.description ? r.description.slice(0, 2000) : null,   // ⇐ opcionális
+        description: r.description ? r.description.slice(0, 2000) : null,
         location: r.location ? r.location.slice(0, 255) : null,
         contact: r.contact ? r.contact.slice(0, 255) : null,
         registration_link: r.registration_link ? r.registration_link.slice(0, 1024) : null,
         organizer: r.organizer ? r.organizer.slice(0, 255) : null,
         source: r.source || null,
         source_url: r.source_url || null,
-        uniqueness_key: key,          // olvasható kulcs
-        uniqueness_key_hash: keyHash, // ezt indexeljük
+        uniqueness_key: key,
+        uniqueness_key_hash: keyHash,
       };
     });
 }
+
 
 async function upsertByUniqKey(rows) {
   const supabase = getSupabase();
