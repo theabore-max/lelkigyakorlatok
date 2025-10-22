@@ -9,12 +9,37 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const HU_MONTHS = {
+  "jan":1,"jan.":1,"januar":1,"január":1,
+  "feb":2,"feb.":2,"febr":2,"február":2,
+  "marc":3,"mar.":3,"márc":3,"márc.":3,"marcius":3,"március":3,
+  "apr":4,"apr.":4,"ápr":4,"ápr.":4,"aprilis":4,"április":4,
+  "maj":5,"máj":5,"máj.":5,"majus":5,"május":5,
+  "jun":6,"jún":6,"jún.":6,"junius":6,"június":6,
+  "jul":7,"júl":7,"júl.":7,"julius":7,"július":7,
+  "aug":8,"aug.":8,"augusztus":8,
+  "szept":9,"szept.":9,"szeptember":9,
+  "okt":10,"okt.":10,"oktober":10,"október":10,
+  "nov":11,"nov.":11,"november":11,
+  "dec":12,"dec.":12,"december":12
+};
 
 // ---------- segéd: abszolút URL ----------
-function absUrl(href, base) {
-  try { return new URL(href, base).toString(); }
-  catch { return null; }
+function absUrl(raw, base) {
+  try { return new URL(raw, base).toString(); } catch { return null; }
 }
+
+function plainText(html = "") {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+
 
 // ---------- Supabase (lustán) ----------
 let _sb = null;
@@ -26,6 +51,175 @@ function getSupabase() {
   _sb = createClient(url, key, { auth: { persistSession: false } });
   return _sb;
 }
+// ============ ENRICH/OKOSÍTÁS KEZDETE ============
+
+function pad2(n){return String(n).padStart(2,"0");}
+function toISO(y,m,d,hh=12,mm=0){ return new Date(Date.UTC(+y, m-1, +d, +hh, +mm, 0)).toISOString(); }
+
+function inferYearFor(month, today = new Date()){
+  const y = today.getUTCFullYear();
+  const thisMonth = today.getUTCMonth()+1;
+  return (month < thisMonth - 1) ? (y + 1) : y;
+}
+
+/** Laza HU dátum: cím/HTML szövegben is eltalálja. */
+function parseHuDateRangeLoose(text, today = new Date()){
+  if(!text) return null;
+  const src = text.toLowerCase().replace(/\u00a0/g," ").replace(/\s+/g," ").trim();
+
+  // 1) 2025. okt. 22 – 26.
+  let m = src.match(/(\d{4})\.?\s+([a-záéíóöőúüű\.]+)\s+(\d{1,2})(?:\s*[–-]\s*(\d{1,2}))?/i);
+  if(m){
+    const y = +m[1];
+    const mon = HU_MONTHS[(m[2]||"").replace(/\.$/,"")] || null;
+    const d1 = +m[3];
+    const d2 = m[4] ? +m[4] : null;
+    if(mon && d1){
+      return { start: toISO(y, mon, d1), end: d2 ? toISO(y, mon, d2) : null };
+    }
+  }
+
+  // 2) 2025 november 14-16
+  m = src.match(/(\d{4})\s+([a-záéíóöőúüű\.]+)\s+(\d{1,2})(?:\s*[–-]\s*(\d{1,2}))?/i);
+  if(m){
+    const y = +m[1];
+    const mon = HU_MONTHS[(m[2]||"").replace(/\.$/,"")] || null;
+    const d1 = +m[3];
+    const d2 = m[4] ? +m[4] : null;
+    if(mon && d1){
+      return { start: toISO(y, mon, d1), end: d2 ? toISO(y, mon, d2) : null };
+    }
+  }
+
+  // 3) év nélkül: "október 16–19"
+  m = src.match(/([a-záéíóöőúüű\.]+)\s+(\d{1,2})(?:\s*[–-]\s*(\d{1,2}))?/i);
+  if(m){
+    const mon = HU_MONTHS[(m[1]||"").replace(/\.$/,"")] || null;
+    const d1 = +m[2], d2 = m[3] ? +m[3] : null;
+    if(mon && d1){
+      const y = inferYearFor(mon, today);
+      return { start: toISO(y, mon, d1), end: d2 ? toISO(y, mon, d2) : null };
+    }
+  }
+  return null;
+}
+
+const TG_RULES = [
+  { group:"Fiatalok",      rx: /(fiataloknak|fiatal(?:\s|$)|ifjúsági|diák|egyetemista|találkozó fiatal)/i },
+  { group:"Jegyesek",      rx: /(jegyes(?:ek|eknek)?|jegyeskurzus|jegyes hétvége)/i },
+  { group:"Fiatal házasok",rx: /(fiatal(?:\s|-)h(?:á|a)zas|friss házas)/i },
+  { group:"Érett házasok", rx: /(érett(?:\s|-)h(?:á|a)zas|házaspár(?:oknak)?|házaspárok)/i },
+  { group:"Tinédzserek",   rx: /(tinédzser|tini|középiskolás|konfirmandus)/i },
+  { group:"Családok",      rx: /(család(?:ok|os)|anya-apa-gyerek|apák|anyák)/i },
+  { group:"Idősek",        rx: /(időseknek|nyugdíjas|szépkorú)/i },
+];
+
+function guessTargetGroup(title="", description="") {
+  const t = (title||"") + " " + (description||"");
+  for(const r of TG_RULES){ if(r.rx.test(t)) return r.group; }
+  return "Mindenki";
+}
+
+function pickRegistrationLink({ links=[], baseUrl=null, prefer=null }){
+  const isImage = (u) => /\.(gif|png|jpe?g|webp|svg)(\?|$)/i.test(u||"");
+  const score = (href="", text="") => {
+    let s = 0;
+    const H = (href||"").toLowerCase(), T = (text||"").toLowerCase();
+    if (/forms\.gle|docs\.google\.com\/forms|form|jelentkez|regisztr|eventbrite|jotform/.test(H)) s += 5;
+    if (/jelentkez|regisztr|jelentkezem|jel/.test(T)) s += 3;
+    if (prefer && H.includes(prefer)) s += 1;
+    if (isImage(H)) s -= 10;
+    return s;
+  };
+
+  let best = null, bestScore = -1e9;
+  for(const link of links){
+    const hrefAbs = absUrl(link.href, baseUrl);
+    if(!hrefAbs) continue;
+    const sc = score(hrefAbs, link.text);
+    if(sc > bestScore){ bestScore = sc; best = hrefAbs; }
+  }
+  return best || null;
+}
+
+function sourceSpecificFixes(row){
+  const notes = [];
+
+  // Bükkszentkereszt – ha 12.31-re esett, próbáld a cím/descr-ből
+  if (/bükkszentkereszt/i.test(row.location||"") || /bükkszentkereszt/i.test(row.title||"")){
+    const bad = row.start_date && /-12-31T/.test(row.start_date);
+    if (bad) {
+      const dr = parseHuDateRangeLoose(`${row.title} ${row.description}`);
+      if (dr) { row.start_date = dr.start; row.end_date = dr.end; notes.push("date_fix:bukkszent-cimbol"); }
+    }
+  }
+
+  // Jezsuiták: ne mutasson képre a jelentkezési link
+  // (rss 'source' nem 'Jezsuiták', ezért a domain alapján is jelöljük)
+  const srcTxt = `${row.source||""} ${row.source_url||""}`.toLowerCase();
+  if (/jezsuit/.test(srcTxt)){
+    if (row.registration_link && /\.(gif|png|jpe?g|webp|svg)(\?|$)/i.test(row.registration_link)){
+      row.registration_link = null;
+      notes.push("reglink_removed:image");
+    }
+  }
+
+  return notes;
+}
+
+function normalizeAndEnrich(rawRow){
+  const row = { ...rawRow };
+  const notes = [];
+
+  // célcsoport (csak ha nincs beállítva vagy Mindenki)
+  const guessed = guessTargetGroup(row.title, row.description || plainText(row.content||""));
+  if (!row.target_group || row.target_group === "Mindenki") {
+    row.target_group = guessed;
+    notes.push("tg:"+guessed);
+  }
+
+  // jelentkezési link – ha van linklista, válassz; ha kép, dobd el
+  if (row._linkCandidates && row._linkCandidates.length){
+    const picked = pickRegistrationLink({ links: row._linkCandidates, baseUrl: row.link });
+    if (picked && picked !== row.registration_link) {
+      row.registration_link = picked;
+      notes.push("reglink:picked");
+    }
+  } else if (row.registration_link) {
+    if (/\.(gif|png|jpe?g|webp|svg)(\?|$)/i.test(row.registration_link)) {
+      row.registration_link = null;
+      notes.push("reglink_removed:image");
+    }
+  }
+
+  // dátum fallback: ha hiányos vagy 12.31-re csúszott
+  const badDate = row.start_date && /-12-31T/.test(row.start_date);
+  if (!row.start_date || badDate) {
+    const textForDate = `${row.title||""} ${row.description||plainText(row.content||"")}`;
+    const dr = parseHuDateRangeLoose(textForDate);
+    if (dr) {
+      row.start_date = dr.start;
+      row.end_date = dr.end;
+      notes.push("date:parsed_from_text");
+    }
+  }
+
+  // forrás-specifikus
+  notes.push(...sourceSpecificFixes(row));
+
+  // end < start → end=null
+  if (row.start_date && row.end_date) {
+    if (new Date(row.end_date) < new Date(row.start_date)) {
+      row.end_date = null;
+      notes.push("date_fix:end_before_start");
+    }
+  }
+
+  row._debug_notes = notes.join("|");
+  return row;
+}
+// ============ ENRICH/OKOSÍTÁS VÉGE ============
+
 
 // ---------- beállítások ----------
 const FEEDS = [
@@ -37,30 +231,10 @@ const BIZ_CATEGORY = "https://bizdramagad.hu/hitelet/lelkigyakorlat/";
 
 const AXIOS = axios.create({
   timeout: 15000,
-  headers: { "User-Agent": "RetreatCrawler/1.0 (+contact: you@example.com)" },
+  headers: { "User-Agent": "RetreatCrawler/1.0 (+contact: sajat@emailcimed)" },
 });
 
 // ---------- segédek ----------
-const HU_MONTHS = {
-  január: 1, jan: 1, "jan.": 1,
-  február: 2, feb: 2, "feb.": 2,
-  március: 3, "márc": 3, "márc.": 3, marcius: 3,
-  április: 4, "ápr": 4, "ápr.": 4, aprilis: 4,
-  május: 5, "máj": 5, "máj.": 5, majus: 5,
-  június: 6, "jún": 6, "jún.": 6, junius: 6,
-  július: 7, "júl": 7, "júl.": 7, julius: 7,
-  augusztus: 8, aug: 8, "aug.": 8,
-  szeptember: 9, szept: 9, "szept.": 9, szep: 9, "szep.": 9,
-  október: 10, okt: 10, "okt.": 10, oktober: 10,
-  november: 11, nov: 11, "nov.": 11,
-  december: 12, dec: 12, "dec.": 12,
-};
-
-const toISO = (y, m, d, hh = 0, mm = 0) => {
-  if (!y || !m || !d) return null;
-  const dt = new Date(Number(y), Number(m) - 1, Number(d), Number(hh) || 0, Number(mm) || 0);
-  return isNaN(dt) ? null : dt.toISOString();
-};
 
 const stripHtml = (html = "") =>
   String(html).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -184,6 +358,15 @@ async function importFromRSS({ rssLimitPerFeed = Infinity } = {}) {
       const text = stripHtml(html);
       const { startISO, endISO } = parseHUDateRange(`${title}\n${html}`);
       if (!startISO) continue;
+ 
+ // link jelöltek a részhez – később okosan választunk
+      const $$ = cheerio.load(html || "");
+      const linkCandidates = [];
+      $$("a[href]").each((_, a) => {
+      const href = $$(a).attr("href");
+      if (!href) return;
+      linkCandidates.push({ href, text: $$(a).text().trim() });
+      });
 
       rows.push({
         source: "rss",
@@ -195,8 +378,9 @@ async function importFromRSS({ rssLimitPerFeed = Infinity } = {}) {
         end_date: endISO,
         location: detectLocation(`${title} ${text}`),
         contact: extractContact(text),
-        registration_link: firstLink(html) || item.link || null,
-        target_group: "Mindenki",
+		registration_link: firstLink(html) || item.link || null,
+        _linkCandidates: linkCandidates,                 // ⇐ új
+        target_group: guessTargetGroup(title, text),     // ⇐ jobb default
         organizer: null,
         registration_deadline: null,
         community_id: null,
@@ -256,11 +440,13 @@ async function parseProgram(programUrl) {
 
   // reg link preferáltan űrlap
   let registration_link = null;
+  const linkCandidates = []; // ⇐ gyűjtjük
   $("a[href]").each((_, a) => {
     const raw = $(a).attr("href");
     if (!raw) return;
     const href = absUrl(raw, programUrl);
     if (!href) return;
+	linkCandidates.push({ href, text: $(a).text().trim() }); // ⇐ jelölt
     if (/forms\.gle|form|jelentkez/i.test(href)) {
       registration_link = href;
       return false;
@@ -279,11 +465,124 @@ async function parseProgram(programUrl) {
     location,
     contact: null,
     registration_link,
-    target_group: null,
+    _linkCandidates: linkCandidates,                     // ⇐ add át
+	target_group: null,
     organizer,
     registration_deadline,
     community_id: null,
   };
+}
+async function fetchElza(axios, cheerio, limit = 40) {
+  const base = "https://elza.szerzetesek.hu";
+  const listUrl = `${base}/lelkigyakorlatok`;
+
+  const { data: html } = await AXIOS.get(listUrl, { timeout: 20000 });
+  const $ = cheerio.load(html);
+
+  const rows = [];
+  let curDate = null, curPlace = null;
+
+  // A lista szerkezete: Dátum → Hely → <h3/h4><a href="...">Cím</a>
+  $("h4, h3, p").each((_, el) => {
+    const tag = el.tagName?.toLowerCase?.() || el.name;
+    const text = $(el).text().trim().replace(/\s+/g, " ");
+
+    // 1) dátum sor (pl. "2025. okt. 22 – 26.")
+    if (/^\d{4}\./.test(text) || /^\d{4}\s+(jan|feb|márc|ápr|máj|jún|júl|aug|szept|okt|nov|dec)/i.test(text)) {
+      const dr = parseHuDateRangeLoose(text);
+      if (dr) curDate = dr;
+      return;
+    }
+
+    // 2) helyszín sor (követi a dátumot)
+    if (curDate && !curPlace && text && text.length < 150) {
+      curPlace = text;
+      return;
+    }
+
+    // 3) cím + részletlink
+    if (tag === "h4" || tag === "h3") {
+      const a = $(el).find("a[href]").first();
+      if (!a.length) return;
+      const href = absUrl(a.attr("href"), base);
+      const title = a.text().trim();
+
+      rows.push({ title, href, curDate, curPlace });
+      // reset a következő blokkhoz
+      curDate = null;
+      curPlace = null;
+    }
+  });
+
+  // részletoldalak letöltése (udvariasan)
+  const out = [];
+  for (const it of rows.slice(0, limit)) {
+    const { title, href, curDate, curPlace } = it;
+    let description = "";
+    let registration_link = null;
+    const linkCandidates = [];
+
+    try {
+      const { data: detailHtml } = await AXIOS.get(href, { timeout: 20000 });
+      const $$ = cheerio.load(detailHtml);
+
+      // leírás: első 3-4 bekezdés szövege
+      const paras = [];
+      $$("p").each((i, p) => {
+        const t = $$(p).text().trim();
+        if (t) paras.push(t);
+      });
+      description = paras.slice(0, 4).join("\n\n");
+
+      // linkjelöltek + preferált jelentkezési link
+      $$("a[href]").each((_, a2) => {
+        const raw = $$(a2).attr("href");
+        const h = absUrl(raw, href);
+        if (!h) return;
+        const txt = $$(a2).text().trim();
+        linkCandidates.push({ href: h, text: txt });
+      });
+      registration_link = pickRegistrationLink({ links: linkCandidates, baseUrl: href });
+
+    } catch (e) {
+      // ha nem sikerül a részletoldal, marad a cím és a lista-információ
+    }
+
+    // start/end dátum: ha a listából nem jött, próbáljuk cím/leírás szövegből
+    let start_date = curDate?.start || null;
+    let end_date = curDate?.end || null;
+    if (!start_date) {
+      const dr2 = parseHuDateRangeLoose(`${title} ${description}`);
+      if (dr2) { start_date = dr2.start; end_date = dr2.end; }
+    }
+
+    const rawRow = {
+      source: "ELZA",
+      source_url: listUrl,     // forrásmegjelöléshez
+      link: href,              // részletoldal
+      guid: `elza:${href}`,    // emberi-olvasható azonosító
+      title,
+      description,
+      start_date,
+      end_date,
+      location: curPlace || null,
+      contact: null,
+      registration_link,
+      _linkCandidates: linkCandidates,
+      target_group: guessTargetGroup(title, description),
+      organizer: null,
+      registration_deadline: null,
+      community_id: null,
+      // stabil dedup a DB felé:
+      uniqueness_key: sha1(`elza|${href}`)
+    };
+
+    out.push(normalizeAndEnrich(rawRow));
+    // kis pihenő, ne üssük az oldalt
+    await sleep(350);
+  }
+
+  return out;
 }
 
 async function importFromBizdramagad({ limit = Infinity } = {}) {
@@ -357,10 +656,36 @@ export async function runIngest({
   const doRSS = src === "rss" || src === "all";
   const doBIZ = src === "biz" || src === "all";
 
-  const rssRows = doRSS ? await importFromRSS({ rssLimitPerFeed }) : [];
-  const bizRows = doBIZ ? await importFromBizdramagad({ limit }) : [];
+ // 1) beolvasások
+const rssRows = await importFromRSS({ rssLimitPerFeed });
+const bizRows = src === "all" || src === "biz" ? await importFromBiz({ limit }) : [];
+const elzaRows = src === "all" || src === "elza" ? await fetchElza(AXIOS, cheerio, limit) : [];
 
-  const prepared = prepareRows([...rssRows, ...bizRows]);
+// 2) összevonás
+const incoming = [...rssRows, ...bizRows, ...elzaRows].map(normalizeAndEnrich);
+
+// 3) futáson belüli kereszt-forrás dedup (cím+start+hely alapján)
+const seenTriples = new Set();
+const crossDedup = [];
+for (const r of incoming) {
+  const tNorm = (r.title || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const dKey = r.start_date ? r.start_date.slice(0, 10) : "";
+  const lNorm = (r.location || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const key = `${tNorm}|${dKey}|${lNorm}`;
+  if (seenTriples.has(key)) continue;
+  seenTriples.add(key);
+  crossDedup.push(r);
+}
+
+// 4) a te meglévő előkészítőd
+const prepared = prepareRows(crossDedup);
+
+// 5) a te meglévő DB-dedup beszúrás (uniqueness_key index)
+//    — itt a prepared elemek már hordozzák a `uniqueness_key`-et (ELZA-nál biztosan)
+
+
+  const enriched  = [...rssRows, ...bizRows].map(normalizeAndEnrich);
+ const prepared  = prepareRows(enriched);
 
   // memóriabeli dedup HASH alapján
   const seen = new Set();
@@ -372,7 +697,7 @@ export async function runIngest({
     unique.push(r);
   }
 
-  if (dry) {
+   if (dry) {
     return {
       dry: true,
       src,
@@ -380,7 +705,12 @@ export async function runIngest({
       bizCount: bizRows.length,
       prepared: prepared.length,
       unique: unique.length,
-      sample: unique.slice(0, 5),
+     sample: unique.slice(0, 5).map(r => ({
+       title: r.title, start_date: r.start_date, end_date: r.end_date,
+       target_group: r.target_group, registration_link: r.registration_link,
+       source: r.source, source_url: r.source_url,
+       notes: r._debug_notes
+     })),
     };
   }
 
