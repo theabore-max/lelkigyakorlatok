@@ -38,6 +38,82 @@ function plainText(html = "") {
     .replace(/\s+/g, " ")
     .trim();
 }
+// Szépen rövidít szavak végén (maxLen körül)
+function smartTrim(s = "", maxLen = 1000) {
+  const str = (s || "").trim().replace(/\s+/g, " ");
+  if (str.length <= maxLen) return str;
+  const cut = str.slice(0, maxLen + 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut.slice(0, maxLen)).trim() + "…";
+}
+
+/**
+ * Bizdrámagad oldalról értelmes leírást készít:
+ * - a “Részletek/Mottó/A lelkigyakorlat keretei” környékéről indul
+ * - összefűzi az első néhány p és li elemet (bullet előtaggal)
+ * - plain text + szépen rövidít + "Részletek: url"
+ */
+function extractDescriptionFromBiz($, programUrl, maxChars = 1100) {
+  // 1) próbáljuk megtalálni a fő tartalmi konténert
+  const roots = [
+    "article", ".entry-content", ".post-content", "#content", ".content", "#primary", "main"
+  ];
+  let $root = null;
+  for (const sel of roots) {
+    const cand = $(sel).first();
+    if (cand && cand.length) { $root = cand; break; }
+  }
+  if (!$root) $root = $("body");
+
+  // 2) indulási marker (Részletek/Mottó stb.)
+  const markers = /részletek|mottó|a lelkigyakorlat keretei|tartalom/i;
+
+  // keressük az első olyan elemet, aminek a szövege markerre illeszkedik
+  let startEl = null;
+  $root.find("h2, h3, h4, p, strong, b").each((_, el) => {
+    const t = $(el).text().trim();
+    if (markers.test(t)) { startEl = el; return false; }
+  });
+  // ha nincs marker, induljunk az első bekezdéstől az article-ben
+  if (!startEl) startEl = $root.find("p").get(0);
+
+  // 3) gyűjtsünk 6–8 blokkot (p + li), de álljunk meg “Jelentkezem/Részletek” gomboknál
+  const blocks = [];
+  let take = false;
+  $root.find("h2, h3, h4, p, ul, ol").each((_, el) => {
+    if (!take) {
+      if (el === startEl) take = true;
+      else return;
+    }
+    const tag = el.tagName?.toLowerCase?.() || el.name;
+    const text = $(el).text().trim();
+    if (!text) return;
+
+    // megálló feltételek
+    if (/jelentkez(em|és)|regisztr|kapcsolat|további információ/i.test(text)) return false;
+
+    if (tag === "p" || tag === "h4" || tag === "h3") {
+      blocks.push(text);
+    } else if (tag === "ul" || tag === "ol") {
+      $(el).find("li").each((_, li) => {
+        const liText = $(li).text().trim();
+        if (liText) blocks.push("• " + liText);
+      });
+    }
+
+    if (blocks.length >= 8) return false;
+  });
+
+  // 4) összeállítás + rövidítés + "Részletek: url"
+  let joined = blocks.join("\n\n");
+  joined = joined.replace(/\n{3,}/g, "\n\n").trim();
+  joined = smartTrim(joined, maxChars);
+
+  if (programUrl) {
+    joined += `\n\nRészletek: ${programUrl}`;
+  }
+  return joined;
+}
 
 
 
@@ -162,8 +238,29 @@ function sourceSpecificFixes(row){
       row.registration_link = null;
       notes.push("reglink_removed:image");
     }
+	if (/\.(gif|png|jpe?g|webp|svg)(\?|$)/i.test(row.registration_link) ||
+        /\/wp-includes\/js\/tinymce\/plugins\/wordpress\/img\/trans\.gif/i.test(row.registration_link)) {
+      // kép/gif → dobd el és próbálj fallbacket
+      row.registration_link = null;
+      notes.push("reglink_removed:image");
+    }
+	  if (row.registration_link && (
++        /\.(gif|png|jpe?g|webp|svg)(\?|$)/i.test(row.registration_link) ||
++        /\/wp-includes\/js\/tinymce\/plugins\/wordpress\/img\/trans\.gif/i.test(row.registration_link)
++      )) {
++      row.registration_link = null;
++      notes.push("reglink_removed:image");
++    }
   }
-
+  
+ // 5.2/b Fallback: ha továbbra sincs registration_link, de van részletoldal
+ if (!row.registration_link) {
+   const fallback = row.link || row.source_url || null;
+   if (fallback) {
+     row.registration_link = fallback;
+     notes.push("reglink:fallback_to_detail");
+   }
+ }
   return notes;
 }
 
@@ -231,7 +328,7 @@ const BIZ_CATEGORY = "https://bizdramagad.hu/hitelet/lelkigyakorlat/";
 
 const AXIOS = axios.create({
   timeout: 15000,
-  headers: { "User-Agent": "RetreatCrawler/1.0 (+contact: sajat@emailcimed)" },
+  headers: { "User-Agent": "RetreatCrawler/1.0 (+contact: info@te-domained.hu)" },
 });
 
 // ---------- segédek ----------
@@ -436,8 +533,10 @@ async function parseProgram(programUrl) {
   };
   const location = field("Helyszín");
   const organizer = field("Programszervező") || field("Szervező");
-  const registration_deadline = field("Jelentkezési határidő");
-
+ 
+ const registration_deadline = field("Jelentkezési határidő");
+// ⇩ ÚJ: egy értelmes leírás-kivonat
+  const prettyDescription = extractDescriptionFromBiz($, programUrl, 1100);
   // reg link preferáltan űrlap
   let registration_link = null;
   const linkCandidates = []; // ⇐ gyűjtjük
@@ -459,7 +558,7 @@ async function parseProgram(programUrl) {
     source_url: programUrl,
     guid: `biz:${sha1(`${title}|${startISO||""}|${programUrl}`)}`,
     title,
-    description: null,
+    description: prettyDescription || null,
     start_date: startISO,
     end_date: endISO,
     location,
@@ -614,10 +713,12 @@ function prepareRows(rows) {
     .filter((r) => r.title && r.start_date)
     .map((r) => {
       const key = buildUniquenessKey(r);
+	  const key = r.uniqueness_key || buildUniquenessKey(r);
       const keyHash = sha1(key);
       return {
         ...r,
         title: r.title.slice(0, 255),
+        description: r.description ? r.description.slice(0, 2000) : null,   // ⇐ opcionális
         location: r.location ? r.location.slice(0, 255) : null,
         contact: r.contact ? r.contact.slice(0, 255) : null,
         registration_link: r.registration_link ? r.registration_link.slice(0, 1024) : null,
@@ -701,7 +802,8 @@ export async function runIngest({
       elzaCount: elzaRows.length,
       prepared: prepared.length,
       unique: unique.length,
-      sample: unique.slice(0, 5).map(r => ({
+      // Mintát a crossDedup-ból adunk vissza, hogy biztosan meglegyen a _debug_notes
+      sample: crossDedup.slice(0, 5).map(r => ({
         title: r.title,
         start_date: r.start_date,
         end_date: r.end_date,
