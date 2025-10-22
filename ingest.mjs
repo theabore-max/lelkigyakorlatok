@@ -649,45 +649,40 @@ async function upsertByUniqKey(rows) {
 // ---------- fő futtató ----------
 export async function runIngest({
   dry = false,
-  src = "all",             // "rss" | "biz" | "all"
-  limit = 40,              // Bizdrámagad: ennyi program-oldalt dolgozzon fel
+  src = "all",             // "rss" | "biz" | "elza" | "all"
+  limit = 40,              // HTML-scraperek: ennyi részlet-oldal
   rssLimitPerFeed = 100,   // RSS: feedenként ennyi item
 } = {}) {
+  // 1) beolvasások (src szerint)
   const doRSS = src === "rss" || src === "all";
   const doBIZ = src === "biz" || src === "all";
+  const doELZA = src === "elza" || src === "all";
 
- // 1) beolvasások
-const rssRows = await importFromRSS({ rssLimitPerFeed });
-const bizRows = src === "all" || src === "biz" ? await importFromBiz({ limit }) : [];
-const elzaRows = src === "all" || src === "elza" ? await fetchElza(AXIOS, cheerio, limit) : [];
+  const rssRows  = doRSS  ? await importFromRSS({ rssLimitPerFeed }) : [];
+  const bizRows  = doBIZ  ? await importFromBizdramagad({ limit })   : [];
+  const elzaRows = doELZA ? await fetchElza(AXIOS, cheerio, limit)   : [];
 
-// 2) összevonás
-const incoming = [...rssRows, ...bizRows, ...elzaRows].map(normalizeAndEnrich);
+  // 2) összevonás + okosítás (normalizeAndEnrich már futott az ELZA-ban,
+  //    de idempotens, ezért még egyszer is futhatna – itt elég egyszerűen összefűzni)
+  const incoming = [...rssRows, ...bizRows, ...elzaRows].map(normalizeAndEnrich);
 
-// 3) futáson belüli kereszt-forrás dedup (cím+start+hely alapján)
-const seenTriples = new Set();
-const crossDedup = [];
-for (const r of incoming) {
-  const tNorm = (r.title || "").toLowerCase().replace(/\s+/g, " ").trim();
-  const dKey = r.start_date ? r.start_date.slice(0, 10) : "";
-  const lNorm = (r.location || "").toLowerCase().replace(/\s+/g, " ").trim();
-  const key = `${tNorm}|${dKey}|${lNorm}`;
-  if (seenTriples.has(key)) continue;
-  seenTriples.add(key);
-  crossDedup.push(r);
-}
+  // 3) futáson belüli keresztforrás-dedup (cím + start_nap + hely)
+  const seenTriples = new Set();
+  const crossDedup = [];
+  for (const r of incoming) {
+    const tNorm = (r.title || "").toLowerCase().replace(/\s+/g, " ").trim();
+    const dKey  = r.start_date ? r.start_date.slice(0, 10) : "";
+    const lNorm = (r.location || "").toLowerCase().replace(/\s+/g, " ").trim();
+    const key = `${tNorm}|${dKey}|${lNorm}`;
+    if (seenTriples.has(key)) continue;
+    seenTriples.add(key);
+    crossDedup.push(r);
+  }
 
-// 4) a te meglévő előkészítőd
-const prepared = prepareRows(crossDedup);
+  // 4) DB-oldali felkészítés (olvasható kulcs + hash)
+  const prepared = prepareRows(crossDedup);
 
-// 5) a te meglévő DB-dedup beszúrás (uniqueness_key index)
-//    — itt a prepared elemek már hordozzák a `uniqueness_key`-et (ELZA-nál biztosan)
-
-
-  const enriched  = [...rssRows, ...bizRows].map(normalizeAndEnrich);
- const prepared  = prepareRows(enriched);
-
-  // memóriabeli dedup HASH alapján
+  // 5) memóriabeli dedup HASH alapján (biztonsági öv)
   const seen = new Set();
   const unique = [];
   for (const r of prepared) {
@@ -697,20 +692,25 @@ const prepared = prepareRows(crossDedup);
     unique.push(r);
   }
 
-   if (dry) {
+  if (dry) {
     return {
       dry: true,
       src,
       rssCount: rssRows.length,
       bizCount: bizRows.length,
+      elzaCount: elzaRows.length,
       prepared: prepared.length,
       unique: unique.length,
-     sample: unique.slice(0, 5).map(r => ({
-       title: r.title, start_date: r.start_date, end_date: r.end_date,
-       target_group: r.target_group, registration_link: r.registration_link,
-       source: r.source, source_url: r.source_url,
-       notes: r._debug_notes
-     })),
+      sample: unique.slice(0, 5).map(r => ({
+        title: r.title,
+        start_date: r.start_date,
+        end_date: r.end_date,
+        target_group: r.target_group,
+        registration_link: r.registration_link,
+        source: r.source,
+        source_url: r.source_url,
+        notes: r._debug_notes
+      })),
     };
   }
 
@@ -720,10 +720,12 @@ const prepared = prepareRows(crossDedup);
     src,
     rssCount: rssRows.length,
     bizCount: bizRows.length,
+    elzaCount: elzaRows.length,
     prepared: prepared.length,
     unique: unique.length,
     written,
   };
 }
+
 
 export default runIngest;
