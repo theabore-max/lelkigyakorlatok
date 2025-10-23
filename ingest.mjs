@@ -276,12 +276,20 @@ function normalizeAndEnrich(rawRow){
       row.registration_link = picked;
       notes.push("reglink:picked");
     }
-  } else if (row.registration_link) {
-    if (/\.(gif|png|jpe?g|webp|svg)(\?|$)/i.test(row.registration_link)) {
-      row.registration_link = null;
-      notes.push("reglink_removed:image");
-    }
-  }
+  }  // 2/b) Globális képlink-szűrés (MINDEN forrásra)
+ const isImageLink = (u) =>
+   !!u && (/\.(gif|png|jpe?g|webp|svg)(\?|$)/i.test(u) ||
+           /\/wp-includes\/js\/tinymce\/plugins\/wordpress\/img\/trans\.gif/i.test(u));
+ if (isImageLink(row.registration_link)) {
+   row.registration_link = null;
+   notes.push("reglink_removed:image");
+ }
+
+ // 2/c) Fallback: részletoldal → source_url
+ if (!row.registration_link) {
+   const fb = row.link || row.source_url || null;
+   if (fb) { row.registration_link = fb; notes.push("reglink:fallback_to_detail"); }
+ }
 
   // dátum fallback: ha hiányos vagy 12.31-re csúszott
   const badDate = row.start_date && /-12-31T/.test(row.start_date);
@@ -637,13 +645,43 @@ async function fetchElza(axios, cheerio, limit = 40) {
       });
       registration_link = pickRegistrationLink({ links: linkCandidates, baseUrl: href });
 
+// --- ÚJ: "Időpont" blokk special-case ---
+     // Keresünk "Időpont" feliratot és a környékén dátumot
+     let detailDateText = null;
+     $$(".field, p, li, div").each((_, el) => {
+       const t = $$(el).text().trim().replace(/\s+/g, " ");
+       if (/^időpont/i.test(t) || /időpont\s*:/i.test(t)) {
+         detailDateText = t.replace(/^időpont\s*:?\s*/i, "");
+         return false;
+       }
+     });
+
+     // ha nem találtunk explicit "Időpont" sort, próbáljuk a teljes body-ból
+    if (!detailDateText) {
+       const bodyText = $$(".content, article, main, body").first().text().trim().replace(/\s+/g, " ");
+       const m = bodyText.match(/időpont[^:]*:\s*([^\.!\n\r]+)/i);
+       if (m) detailDateText = m[1];
+     }
+
+     // ha nyertünk dátum-szöveget, parse-oljuk laza módszerrel
+     if (detailDateText) {
+       const dr3 = parseHuDateRangeLoose(detailDateText);
+       if (dr3) {
+         // csak akkor írjuk felül, ha eddig nem volt
+         if (!curDate?.start) {
+           it.curDate = dr3;
+         }
+       }
+     }
+
+
     } catch (e) {
       // ha nem sikerül a részletoldal, marad a cím és a lista-információ
     }
 
     // start/end dátum: ha a listából nem jött, próbáljuk cím/leírás szövegből
-    let start_date = curDate?.start || null;
-    let end_date = curDate?.end || null;
+  let start_date = (it.curDate?.start ?? curDate?.start) || null;
+  let end_date   = (it.curDate?.end   ?? curDate?.end)   || null;
     if (!start_date) {
       const dr2 = parseHuDateRangeLoose(`${title} ${description}`);
       if (dr2) { start_date = dr2.start; end_date = dr2.end; }
